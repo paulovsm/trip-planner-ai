@@ -56,7 +56,7 @@ interface Trip {
 
 import { ShareDialog } from "@/components/features/share/share-dialog"
 
-const libraries: ("places" | "drawing" | "geometry" | "localContext" | "visualization")[] = ["places"];
+const libraries: ("places" | "drawing" | "geometry" | "visualization")[] = ["places"];
 
 export default function TripDetailPage() {
   const params = useParams()
@@ -232,7 +232,7 @@ export default function TripDetailPage() {
         {/* Sidebar */}
         <div className={cn(
           "border-r bg-background flex flex-col transition-all duration-300 ease-in-out z-10",
-          viewMode === 'map' ? 'hidden' : (viewMode === 'list' ? 'w-full h-full' : 'w-full md:w-1/3 h-1/2 md:h-full order-2 md:order-1')
+          viewMode === 'map' ? 'hidden' : (viewMode === 'list' ? 'w-full h-full' : 'w-full md:w-1/3 h-[65%] md:h-full order-2 md:order-1')
         )}>
           <div className="p-6 border-b flex justify-between items-start">
             <div>
@@ -420,7 +420,7 @@ export default function TripDetailPage() {
         {/* Map Area */}
         <div className={cn(
           "bg-muted relative flex transition-all duration-300 ease-in-out",
-          viewMode === 'list' ? 'hidden' : (viewMode === 'map' ? 'w-full h-full absolute inset-0 z-0' : 'flex-1 h-1/2 md:h-full order-1 md:order-2')
+          viewMode === 'list' ? 'hidden' : (viewMode === 'map' ? 'w-full h-full absolute inset-0 z-0' : 'h-[35%] md:h-full flex-none md:flex-1 order-1 md:order-2')
         )}>
           {viewMode === 'map' && (
             <div className="absolute top-4 left-4 z-10 bg-background/90 backdrop-blur-sm p-1 rounded-lg shadow-md border">
