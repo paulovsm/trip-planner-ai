@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json()
-    const { name, points, startDate, endDate } = body
+    const { name, points, startDate, endDate, importedItineraries } = body
 
     // Get user by email
     const usersRef = firestore.collection('users');
@@ -45,6 +45,8 @@ export async function POST(req: NextRequest) {
     // Add points as subcollection
     const pointsPromises = points.map((point: any) => {
       const pointRef = tripRef.collection('points').doc();
+      // Store the original ID if available (from client state) or use the new doc ID
+      // We need to map client-side points to server-side IDs for itinerary creation
       return pointRef.set({
         id: pointRef.id,
         name: point.name,
@@ -57,10 +59,52 @@ export async function POST(req: NextRequest) {
         createdAt: now,
         updatedAt: now,
         tripId: tripId
-      });
+      }).then(() => ({ originalName: point.name, newId: pointRef.id }));
     });
 
-    await Promise.all(pointsPromises);
+    const createdPointsMap = await Promise.all(pointsPromises);
+
+    // Create itineraries if imported
+    if (importedItineraries && Array.isArray(importedItineraries)) {
+      const itineraryPromises = importedItineraries.map(async (itinerary: any) => {
+        const itineraryRef = tripRef.collection('itineraries').doc();
+        
+        // Calculate date based on start date + day offset
+        let itineraryDate = now;
+        if (startDate) {
+          const start = new Date(startDate);
+          start.setDate(start.getDate() + (itinerary.day - 1));
+          itineraryDate = start;
+        } else if (itinerary.date) {
+          itineraryDate = new Date(itinerary.date);
+        }
+
+        // Map items names to point IDs
+        const items = (itinerary.items || []).map((itemName: string, index: number) => {
+          // Find the point ID by name (case insensitive)
+          const pointMapping = createdPointsMap.find(p => p.originalName.toLowerCase() === itemName.toLowerCase());
+          if (pointMapping) {
+            return {
+              id: crypto.randomUUID(),
+              pointId: pointMapping.newId,
+              order: index
+            };
+          }
+          return null;
+        }).filter(Boolean); // Remove items where point wasn't found
+
+        return itineraryRef.set({
+          id: itineraryRef.id,
+          date: itineraryDate,
+          items: items,
+          createdAt: now,
+          updatedAt: now,
+          tripId: tripId
+        });
+      });
+
+      await Promise.all(itineraryPromises);
+    }
 
     // Fetch the created trip with points
     const pointsSnapshot = await tripRef.collection('points').get();

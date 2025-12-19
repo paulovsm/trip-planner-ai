@@ -34,15 +34,29 @@ export async function POST(req: NextRequest) {
     // Use Gemini to extract structured data
     const model = getGeminiModel();
     const prompt = `
-      Analise o seguinte texto de um roteiro de viagem e extraia os pontos de interesse (POIs).
+      Analise o seguinte texto de um roteiro de viagem e extraia duas informações principais:
+      1. Pontos de interesse (POIs)
+      2. Roteiro sugerido (Itineraries)
+
       Para cada POI, identifique:
       - name (Nome do local)
       - description (Breve descrição)
       - category (Categoria ex: Museu, Restaurante, Parque, Monumento, Hotel, Transporte)
       - address (Endereço ou localização aproximada)
       - city (Cidade onde o ponto está localizado)
+
+      Para cada item do Roteiro (Itinerary), identifique:
+      - date (Data sugerida no formato YYYY-MM-DD, se disponível, ou null)
+      - day (Dia do roteiro, ex: 1, 2, 3...)
+      - items (Lista de nomes dos POIs visitados neste dia, deve corresponder exatamente ao campo 'name' dos POIs extraídos)
+
+      Retorne APENAS um JSON com a seguinte estrutura:
+      {
+        "pois": [ ... array de POIs ... ],
+        "itineraries": [ ... array de Itineraries ... ]
+      }
       
-      Retorne APENAS um JSON array com os objetos usando as chaves em inglês (name, description, category, address, city). Não use markdown code blocks.
+      Não use markdown code blocks.
       
       Texto do roteiro:
       ${text.substring(0, 30000)} // Limit context window if necessary
@@ -55,7 +69,9 @@ export async function POST(req: NextRequest) {
     // Clean up markdown code blocks if present
     jsonString = jsonString.replace(/```json/g, "").replace(/```/g, "").trim();
 
-    const pois = JSON.parse(jsonString);
+    const parsedData = JSON.parse(jsonString);
+    const pois = parsedData.pois || [];
+    const itineraries = parsedData.itineraries || [];
 
     // Normalize keys to ensure frontend compatibility
     const normalizedPois = Array.isArray(pois) ? pois.map((poi: any) => ({
@@ -73,7 +89,10 @@ export async function POST(req: NextRequest) {
       longitude: 0,
     }));
 
-    return NextResponse.json({ pois: poisWithPlaceholders });
+    return NextResponse.json({ 
+      pois: poisWithPlaceholders,
+      itineraries: itineraries
+    });
   } catch (error) {
     console.error("Error processing file:", error);
     return NextResponse.json(

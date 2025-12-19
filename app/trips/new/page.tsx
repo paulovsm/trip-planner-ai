@@ -28,10 +28,17 @@ interface POI {
   longitude?: number
 }
 
+interface ImportedItinerary {
+  day: number
+  date?: string
+  items: string[] // POI names
+}
+
 const libraries: ("places" | "geometry" | "drawing" | "visualization")[] = ["places"]
 
 export default function NewTripPage() {
   const [pois, setPois] = useState<POI[]>([])
+  const [importedItineraries, setImportedItineraries] = useState<ImportedItinerary[]>([])
   const [tripName, setTripName] = useState("")
   const [startDate, setStartDate] = useState<Date>()
   const [endDate, setEndDate] = useState<Date>()
@@ -60,10 +67,11 @@ export default function NewTripPage() {
     })
   }, [])
 
-  const handleImport = async (data: { pois: POI[] }) => {
+  const handleImport = async (data: { pois: POI[], itineraries?: ImportedItinerary[] }) => {
     if (!isLoaded) {
       toast.error("Google Maps API ainda não carregou. Tente novamente em instantes.")
       setPois((prev) => [...prev, ...data.pois])
+      if (data.itineraries) setImportedItineraries(data.itineraries)
       return
     }
 
@@ -105,11 +113,13 @@ export default function NewTripPage() {
       }))
 
       setPois((prev) => [...prev, ...poisWithCoords])
+      if (data.itineraries) setImportedItineraries(data.itineraries)
       toast.success(`${poisWithCoords.length} pontos importados e geocodificados!`)
     } catch (error) {
       console.error("Error during client-side geocoding", error)
       toast.error("Erro ao geocodificar alguns pontos.")
       setPois((prev) => [...prev, ...data.pois])
+      if (data.itineraries) setImportedItineraries(data.itineraries)
     } finally {
       setIsGeocoding(false)
     }
@@ -149,6 +159,7 @@ export default function NewTripPage() {
           startDate: startDate?.toISOString(),
           endDate: endDate?.toISOString(),
           points: pois,
+          importedItineraries: importedItineraries.length > 0 ? importedItineraries : undefined
         }),
       })
 
@@ -156,8 +167,9 @@ export default function NewTripPage() {
         throw new Error("Falha ao salvar viagem")
       }
 
+      const data = await response.json()
       toast.success("Viagem criada com sucesso!")
-      router.push("/trips")
+      router.push(`/trips/${data.id}`)
     } catch (error) {
       toast.error("Erro ao salvar viagem.")
       console.error(error)

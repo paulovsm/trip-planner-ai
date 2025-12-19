@@ -194,7 +194,7 @@ export default function TripDetailPage() {
         }
       }
     )
-  }, [isScriptLoaded])
+  }, [isScriptLoaded, viewMode])
 
   const handleDeletePoint = async (pointId: string, e: React.MouseEvent) => {
     e.stopPropagation() // Prevent card click
