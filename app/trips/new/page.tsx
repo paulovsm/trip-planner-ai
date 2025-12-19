@@ -8,10 +8,15 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Plus, Trash2, Save, MapPin, Loader2 } from "lucide-react"
+import { Plus, Trash2, Save, MapPin, Loader2, Calendar as CalendarIcon } from "lucide-react"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
 import { useJsApiLoader } from "@react-google-maps/api"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Calendar } from "@/components/ui/calendar"
+import { format } from "date-fns"
+import { ptBR } from "date-fns/locale"
+import { cn } from "@/lib/utils"
 
 interface POI {
   name: string
@@ -28,6 +33,8 @@ const libraries: ("places" | "geometry" | "drawing" | "visualization")[] = ["pla
 export default function NewTripPage() {
   const [pois, setPois] = useState<POI[]>([])
   const [tripName, setTripName] = useState("")
+  const [startDate, setStartDate] = useState<Date>()
+  const [endDate, setEndDate] = useState<Date>()
   const [isGeocoding, setIsGeocoding] = useState(false)
   const router = useRouter()
 
@@ -139,6 +146,8 @@ export default function NewTripPage() {
         },
         body: JSON.stringify({
           name: tripName,
+          startDate: startDate?.toISOString(),
+          endDate: endDate?.toISOString(),
           points: pois,
         }),
       })
@@ -173,7 +182,7 @@ export default function NewTripPage() {
               <CardHeader>
                 <CardTitle>Detalhes da Viagem</CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="tripName">Nome da Viagem</Label>
                   <Input
@@ -182,6 +191,60 @@ export default function NewTripPage() {
                     value={tripName}
                     onChange={(e) => setTripName(e.target.value)}
                   />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2 flex flex-col">
+                    <Label>Data de Início</Label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant={"outline"}
+                          className={cn(
+                            "w-full justify-start text-left font-normal",
+                            !startDate && "text-muted-foreground"
+                          )}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4 shrink-0" />
+                          {startDate ? format(startDate, "dd/MM/yyyy") : <span>Selecione</span>}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={startDate}
+                          onSelect={setStartDate}
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+
+                  <div className="space-y-2 flex flex-col">
+                    <Label>Data de Término</Label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant={"outline"}
+                          className={cn(
+                            "w-full justify-start text-left font-normal",
+                            !endDate && "text-muted-foreground"
+                          )}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4 shrink-0" />
+                          {endDate ? format(endDate, "dd/MM/yyyy") : <span>Selecione</span>}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={endDate}
+                          onSelect={setEndDate}
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
                 </div>
               </CardContent>
             </Card>

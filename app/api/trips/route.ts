@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json()
-    const { name, points } = body
+    const { name, points, startDate, endDate } = body
 
     // Get user by email
     const usersRef = firestore.collection('users');
@@ -29,13 +29,16 @@ export async function POST(req: NextRequest) {
     const tripId = tripRef.id;
     const now = new Date();
 
-    const tripData = {
+    const tripData: any = {
       id: tripId,
       name,
       userId,
       createdAt: now,
       updatedAt: now,
     };
+
+    if (startDate) tripData.startDate = new Date(startDate);
+    if (endDate) tripData.endDate = new Date(endDate);
 
     await tripRef.set(tripData);
 
@@ -116,6 +119,8 @@ export async function GET(req: NextRequest) {
         id: doc.id,
         createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : new Date(data.createdAt),
         updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate() : new Date(data.updatedAt),
+        startDate: data.startDate?.toDate ? data.startDate.toDate() : (data.startDate ? new Date(data.startDate) : null),
+        endDate: data.endDate?.toDate ? data.endDate.toDate() : (data.endDate ? new Date(data.endDate) : null),
         _count: {
           points: pointsSnapshot.data().count
         }

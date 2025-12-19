@@ -219,7 +219,7 @@ export default function TripDetailPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col h-screen">
+    <div className="h-[100dvh] flex flex-col overflow-hidden">
       <Navbar />
       <div className="flex-1 flex flex-col md:flex-row overflow-hidden relative">
         {/* Sidebar */}
@@ -286,12 +286,13 @@ export default function TripDetailPage() {
               </TabsList>
             </div>
 
-            <TabsContent value="points" className="flex-1 overflow-y-auto p-6 space-y-4 min-h-0">
-              <div className="flex flex-col gap-4">
-                <div className="flex justify-between items-center">
-                  <h2 className="font-semibold">Pontos de Interesse</h2>
-                  <CreatePointDialog tripId={trip.id} onSuccess={refetch} />
-                </div>
+            <TabsContent value="points" className="flex-1 flex flex-col min-h-0 mt-2">
+              <div className="flex-1 overflow-y-auto p-6 space-y-4 min-h-0">
+                <div className="flex flex-col gap-4">
+                  <div className="flex justify-between items-center">
+                    <h2 className="font-semibold">Pontos de Interesse</h2>
+                    <CreatePointDialog tripId={trip.id} onSuccess={refetch} />
+                  </div>
                 <div className="relative">
                   <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input
@@ -392,16 +393,19 @@ export default function TripDetailPage() {
                   </div>
                 )}
               </div>
+              </div>
             </TabsContent>
 
-            <TabsContent value="itinerary" className="flex-1 p-6 overflow-auto">
-              <ItineraryPlanner 
-                tripId={trip.id} 
-                points={trip.points} 
-                itineraries={trip.itineraries}
-                onUpdate={refetch}
-                onOptimize={handleOptimize}
-              />
+            <TabsContent value="itinerary" className="flex-1 flex flex-col min-h-0 mt-2">
+              <div className="flex-1 overflow-y-auto p-6 min-h-0">
+                <ItineraryPlanner 
+                  tripId={trip.id} 
+                  points={trip.points} 
+                  itineraries={trip.itineraries}
+                  onUpdate={refetch}
+                  onOptimize={handleOptimize}
+                />
+              </div>
             </TabsContent>
           </Tabs>
         </div>
@@ -436,7 +440,7 @@ export default function TripDetailPage() {
           
           {/* Chat Panel */}
           {isChatOpen && (
-            <div className="fixed inset-0 z-50 w-full h-full bg-background md:relative md:inset-auto md:w-[400px] md:h-full md:border-l md:shadow-none">
+            <div className="fixed inset-0 z-50 w-full h-[100dvh] bg-background md:relative md:inset-auto md:w-[400px] md:h-full md:border-l md:shadow-none">
               <div className="h-full flex flex-col">
                 <div className="md:hidden p-2 flex justify-end border-b">
                   <Button variant="ghost" size="icon" onClick={() => setIsChatOpen(false)}>

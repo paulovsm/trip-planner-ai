@@ -36,7 +36,7 @@ export async function POST(
     const itineraryData = itineraryDoc.data();
 
     // Get current items
-    const currentItems = itineraryData.items || [];
+    const currentItems = itineraryData?.items || [];
     
     // Calculate new order
     const maxOrder = currentItems.reduce((max: number, item: any) => item.order > max ? item.order : max, 0);

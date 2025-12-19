@@ -69,6 +69,17 @@ export async function POST(req: NextRequest) {
         itineraries
     };
 
+    const formatDate = (date: any) => {
+      if (!date) return "Não definidas";
+      try {
+        if (date.toDate) return date.toDate().toLocaleDateString('pt-BR');
+        if (date instanceof Date) return date.toLocaleDateString('pt-BR');
+        return new Date(date).toLocaleDateString('pt-BR');
+      } catch (e) {
+        return "Data inválida";
+      }
+    };
+
     // 2. Prepare System Prompt with Context
     const systemPrompt = `
 Você é um assistente de viagens especializado e amigável.
@@ -76,8 +87,7 @@ O usuário está planejando uma viagem para ${trip.name}.
 
 CONTEXTO DA VIAGEM:
 - Nome: ${trip.name}
-- Datas: ${trip.startDate ? trip.startDate.toDate().toLocaleDateString() : "Não definidas"} até ${trip.endDate ? trip.endDate.toDate().toLocaleDateString() : "Não definidas"}
-- Descrição: ${trip.description || "Sem descrição"}
+- Datas: ${formatDate(trip.startDate)} até ${formatDate(trip.endDate)}
 
 PONTOS DE INTERESSE SALVOS (${trip.points.length}):
 ${trip.points.map((p: any) => `- ${p.name} (${p.category || "Sem categoria"}): ${p.description || ""}`).join("\n")}

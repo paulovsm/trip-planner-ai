@@ -3,7 +3,6 @@
 import { useState, useRef, useEffect } from "react";
 import { ChatMessage } from "./chat-message";
 import { ChatInput } from "./chat-input";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Loader2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 
@@ -79,9 +78,9 @@ export function ChatPanel({ tripId }: ChatPanelProps) {
         Assistente IA
       </div>
       
-      <ScrollArea className="flex-1 p-4" ref={scrollRef}>
+      <div className="flex-1 overflow-y-auto p-4 min-h-0" ref={scrollRef}>
         {messages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-[400px] text-center text-muted-foreground p-8">
+          <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground p-8">
             <Sparkles className="w-12 h-12 mb-4 opacity-20" />
             <p className="mb-2 font-medium">Olá! Sou seu assistente de viagem.</p>
             <p className="text-sm">Posso ajudar com dicas, sugestões de roteiro e informações sobre o destino.</p>
@@ -99,7 +98,7 @@ export function ChatPanel({ tripId }: ChatPanelProps) {
             )}
           </div>
         )}
-      </ScrollArea>
+      </div>
 
       <ChatInput onSend={handleSendMessage} isLoading={isLoading} />
     </div>
