@@ -142,6 +142,7 @@ export default function TripDetailPage() {
       Promise.all(promises)
         .then((results) => {
           setTransitSegments(results)
+          if (viewMode === 'list') setViewMode('map')
         })
         .catch((error) => {
           console.error("Error fetching transit segments:", error)
@@ -182,6 +183,7 @@ export default function TripDetailPage() {
         console.log("Directions API response status:", status)
         if (status === google.maps.DirectionsStatus.OK) {
           setDirections(result)
+          if (viewMode === 'list') setViewMode('map')
         } else {
           console.error(`error fetching directions: ${status}`, result)
           if (status === 'ZERO_RESULTS' && mode === 'TRANSIT') {
@@ -232,11 +234,11 @@ export default function TripDetailPage() {
         {/* Sidebar */}
         <div className={cn(
           "border-r bg-background flex flex-col transition-all duration-300 ease-in-out z-10",
-          viewMode === 'map' ? 'hidden' : (viewMode === 'list' ? 'w-full h-full' : 'w-full md:w-1/3 h-[65%] md:h-full order-2 md:order-1')
+          viewMode === 'map' ? 'hidden' : (viewMode === 'list' ? 'flex-1 h-full' : 'w-full md:w-1/3 h-[65%] md:h-full order-2 md:order-1')
         )}>
           <div className="p-6 border-b flex justify-between items-start">
             <div>
-              <h1 className="text-2xl font-bold mb-2">{trip.name}</h1>
+              <h1 className="text-lg md:text-2xl font-bold mb-2 line-clamp-1">{trip.name}</h1>
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <CalendarIcon className="h-4 w-4" />
                 {trip.startDate ? format(new Date(trip.startDate), "dd/MM/yyyy") : "Data não definida"}
@@ -330,14 +332,17 @@ export default function TripDetailPage() {
 
                   return Object.entries(groupedPoints).map(([city, points]) => (
                     <div key={city} className="space-y-3">
-                      <h3 className="text-sm font-medium text-muted-foreground sticky top-0 bg-background py-2 z-10">
+                      <h3 className="text-sm font-medium text-muted-foreground sticky top-0 py-2 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 z-10">
                         {city} ({points.length})
                       </h3>
                       {points.map((point) => (
                         <Card 
                           key={point.id} 
                           className={`cursor-pointer hover:bg-muted/50 transition-colors ${activePoint?.id === point.id ? 'border-primary bg-muted/50' : ''}`}
-                          onClick={() => setActivePoint(point)}
+                          onClick={() => {
+                            setActivePoint(point)
+                            if (viewMode === 'list') setViewMode('map')
+                          }}
                         >
                           <CardContent className="p-4">
                             <div className="flex items-start gap-3">
@@ -420,7 +425,7 @@ export default function TripDetailPage() {
         {/* Map Area */}
         <div className={cn(
           "bg-muted relative flex transition-all duration-300 ease-in-out",
-          viewMode === 'list' ? 'hidden' : (viewMode === 'map' ? 'w-full h-full absolute inset-0 z-0' : 'h-[35%] md:h-full flex-none md:flex-1 order-1 md:order-2')
+          viewMode === 'list' ? 'hidden' : (viewMode === 'map' ? 'flex-1 h-full order-1' : 'h-[35%] md:h-full flex-none md:flex-1 order-1 md:order-2')
         )}>
           {viewMode === 'map' && (
             <div className="absolute top-4 left-4 z-10 bg-background/90 backdrop-blur-sm p-1 rounded-lg shadow-md border">
@@ -445,21 +450,21 @@ export default function TripDetailPage() {
               activePoint={activePoint}
             />
           </div>
-          
-          {/* Chat Panel */}
-          {isChatOpen && (
-            <div className="fixed inset-0 z-50 w-full h-[100dvh] bg-background md:relative md:inset-auto md:w-[400px] md:h-full md:border-l md:shadow-none">
-              <div className="h-full flex flex-col">
-                <div className="md:hidden p-2 flex justify-end border-b">
-                  <Button variant="ghost" size="icon" onClick={() => setIsChatOpen(false)}>
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-                <ChatPanel tripId={trip.id} />
-              </div>
-            </div>
-          )}
         </div>
+          
+        {/* Chat Panel */}
+        {isChatOpen && (
+          <div className="fixed inset-0 z-50 w-full h-[100dvh] bg-background md:relative md:inset-auto md:w-[400px] md:h-full md:border-l md:shadow-none order-3">
+            <div className="h-full flex flex-col">
+              <div className="md:hidden p-2 flex justify-end border-b">
+                <Button variant="ghost" size="icon" onClick={() => setIsChatOpen(false)}>
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+              <ChatPanel tripId={trip.id} />
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

@@ -133,13 +133,13 @@ export function ItineraryPlanner({ tripId, points, itineraries, onUpdate, onOpti
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
         <Popover>
           <PopoverTrigger asChild>
             <Button
               variant={"outline"}
               className={cn(
-                "w-[240px] justify-start text-left font-normal",
+                "w-full sm:w-[240px] justify-start text-left font-normal",
                 !date && "text-muted-foreground"
               )}
             >
@@ -156,7 +156,7 @@ export function ItineraryPlanner({ tripId, points, itineraries, onUpdate, onOpti
             />
           </PopoverContent>
         </Popover>
-        <Button onClick={handleCreateItinerary} disabled={!date || isCreating}>
+        <Button onClick={handleCreateItinerary} disabled={!date || isCreating} className="w-full sm:w-auto">
           <Plus className="mr-2 h-4 w-4" />
           Adicionar
         </Button>
