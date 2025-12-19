@@ -7,7 +7,7 @@ const nextConfig: NextConfig = {
       bodySizeLimit: '10mb',
     },
   },
-  serverExternalPackages: ["pdf-parse", "mammoth"],
+  serverExternalPackages: ["pdf-parse", "mammoth", "firebase-admin"],
 };
 
 export default nextConfig;
