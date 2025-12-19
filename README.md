@@ -1,45 +1,79 @@
-# TripPlanner
+# TripPlanner AI
 
-TripPlanner é uma aplicação web moderna para planejamento de viagens, permitindo aos usuários criar itinerários detalhados, visualizar rotas no mapa e compartilhar seus planos com amigos.
+TripPlanner AI é uma aplicação web inteligente para planejamento de viagens, projetada para ajudar viajantes a criar, organizar e otimizar seus roteiros de forma eficiente. Com integração de Inteligência Artificial e mapas interativos, o TripPlanner transforma a complexidade de planejar uma viagem em uma experiência simples e agradável.
 
-## Funcionalidades Principais
+## 🚀 Funcionalidades Principais
 
-- **Planejamento de Viagens**: Crie viagens com datas, destinos e atividades.
-- **Itinerário Detalhado**: Organize atividades por dia e horário.
-- **Mapa Interativo**: Visualize locais e rotas usando Google Maps.
-- **Assistente de IA**: Converse com uma IA (Gemini) para obter sugestões de locais e dicas de viagem.
-- **Compartilhamento**: Gere links públicos para compartilhar seus itinerários.
-- **Login Social**: Autenticação segura com Google.
+- **Planejamento Inteligente**: Crie viagens detalhadas com datas, destinos e pontos de interesse.
+- **Otimização de Rotas**: Organize automaticamente a ordem das visitas para economizar tempo, com suporte para diferentes modos de transporte (Carro, Transporte Público, A pé).
+- **Mapa Interativo**: Visualize todos os seus pontos e rotas em um mapa dinâmico do Google Maps.
+- **Assistente de IA (Gemini)**: Converse com um assistente virtual integrado para receber dicas personalizadas, sugestões de restaurantes e atrações.
+- **Importação de Documentos**: Importe reservas e tickets (PDF/Docx) para extrair informações automaticamente para o seu roteiro.
+- **Itinerário Detalhado**: Gerencie suas atividades dia a dia, com funcionalidade de arrastar e soltar para reordenar.
+- **Geocodificação Automática**: Adicione pontos apenas pelo nome ou endereço e deixe o sistema encontrar a localização exata.
+- **Compartilhamento**: Compartilhe seus roteiros com amigos e familiares através de links públicos.
 
-## Tecnologias Utilizadas
+## 🛠️ Tecnologias Utilizadas
 
-- **Frontend**: Next.js 16 (App Router), React, Tailwind CSS, Shadcn UI.
-- **Backend**: Next.js API Routes.
-- **Banco de Dados**: PostgreSQL com Prisma ORM.
-- **Autenticação**: NextAuth.js.
-- **Mapas**: Google Maps JavaScript API, Places API, Directions API.
-- **IA**: Google Gemini API.
+- **Frontend**: [Next.js 16](https://nextjs.org/) (App Router), [React 19](https://react.dev/), [Tailwind CSS](https://tailwindcss.com/), [Shadcn UI](https://ui.shadcn.com/).
+- **Backend**: Next.js API Routes (Server Actions).
+- **Banco de Dados & Auth**: [Firebase](https://firebase.google.com/) (Firestore, Authentication).
+- **Mapas**: [Google Maps Platform](https://developers.google.com/maps) (Maps JS API, Places API, Directions API, Geocoding API).
+- **Inteligência Artificial**: [Google Gemini API](https://ai.google.dev/).
+- **Gerenciamento de Estado**: React Query, Zustand.
 
-## Começando
+## 📦 Instalação e Configuração
 
-Para configurar o projeto localmente, consulte o [Guia de Configuração](SETUP.md).
+Para rodar o projeto localmente, siga os passos abaixo:
 
-## Estrutura do Projeto
+1. **Clone o repositório**
+   ```bash
+   git clone https://github.com/paulovsm/trip-planner-ai.git
+   cd trip-planner-ai
+   ```
 
-- `/app`: Páginas e rotas da API (Next.js App Router).
-- `/components`: Componentes React reutilizáveis.
-  - `/features`: Componentes específicos de funcionalidades (mapa, chat, viagens).
-  - `/ui`: Componentes de interface genéricos (botões, inputs, etc.).
-- `/lib`: Utilitários e configurações (Prisma, Utils).
-- `/prisma`: Esquema do banco de dados e migrações.
+2. **Instale as dependências**
+   ```bash
+   npm install
+   ```
 
-## Scripts Disponíveis
+3. **Configure as Variáveis de Ambiente**
+   Crie um arquivo `.env` na raiz do projeto com as seguintes chaves (baseado no `.env.example`):
 
-- `npm run dev`: Inicia o servidor de desenvolvimento.
-- `npm run build`: Compila o projeto para produção.
-- `npm start`: Inicia o servidor de produção.
-- `npm run lint`: Executa a verificação de código (ESLint).
+   ```env
+   # Google Maps
+   NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=sua_chave_aqui
 
-## Licença
+   # Firebase (Client & Admin)
+   NEXT_PUBLIC_FIREBASE_API_KEY=...
+   FIREBASE_PROJECT_ID=...
+   FIREBASE_CLIENT_EMAIL=...
+   FIREBASE_PRIVATE_KEY=...
+
+   # Google Gemini AI
+   GEMINI_API_KEY=sua_chave_aqui
+
+   # NextAuth
+   NEXTAUTH_URL=http://localhost:3000
+   NEXTAUTH_SECRET=sua_chave_secreta
+   ```
+
+4. **Execute o projeto**
+   ```bash
+   npm run dev
+   ```
+
+   O servidor iniciará em `http://localhost:3000`.
+
+## 📱 Estrutura do Projeto
+
+- `/app`: Rotas e páginas da aplicação (Next.js App Router).
+- `/components`: Componentes React modulares.
+  - `/features`: Funcionalidades específicas (mapa, chat, otimizador).
+  - `/ui`: Componentes de interface reutilizáveis.
+- `/lib`: Configurações de serviços externos (Firebase, Gemini, Maps).
+- `/types`: Definições de tipos TypeScript.
+
+## 📄 Licença
 
 Este projeto está licenciado sob a licença MIT.
