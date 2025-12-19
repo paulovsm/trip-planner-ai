@@ -56,6 +56,8 @@ interface Trip {
 
 import { ShareDialog } from "@/components/features/share/share-dialog"
 
+const libraries: ("places" | "drawing" | "geometry" | "localContext" | "visualization")[] = ["places"];
+
 export default function TripDetailPage() {
   const params = useParams()
   const tripId = params.id as string
@@ -64,11 +66,16 @@ export default function TripDetailPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [viewMode, setViewMode] = useState<'split' | 'map' | 'list'>('split')
 
-  const { isLoaded: isScriptLoaded } = useJsApiLoader({
+  const { isLoaded: isScriptLoaded, loadError } = useJsApiLoader({
     id: "google-map-script",
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "",
-    libraries: ["places"],
+    libraries,
   })
+
+  if (loadError) {
+    toast.error("Erro ao carregar o Google Maps. Verifique a chave de API.");
+    console.error("Google Maps Load Error:", loadError);
+  }
 
   const { data: trip, isLoading, refetch } = useQuery<Trip>({
     queryKey: ["trip", tripId],
@@ -433,7 +440,8 @@ export default function TripDetailPage() {
               points={trip.points} 
               directions={directions} 
               transitSegments={transitSegments}
-              isLoaded={isScriptLoaded} 
+              isLoaded={isScriptLoaded}
+              loadError={loadError}
               activePoint={activePoint}
             />
           </div>

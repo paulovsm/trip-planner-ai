@@ -2,7 +2,7 @@
 
 import { GoogleMap, useJsApiLoader, Marker, InfoWindow, DirectionsRenderer } from "@react-google-maps/api"
 import { useState, useCallback, useEffect } from "react"
-import { Loader2 } from "lucide-react"
+import { Loader2, AlertTriangle } from "lucide-react"
 
 const containerStyle = {
   width: "100%",
@@ -31,10 +31,11 @@ interface MapProps {
   onMapClick?: (e: google.maps.MapMouseEvent) => void
   onMarkerClick?: (point: Point) => void
   isLoaded?: boolean
+  loadError?: Error | undefined
   activePoint?: Point | null
 }
 
-export function Map({ points, directions, transitSegments, onMapClick, onMarkerClick, isLoaded = true, activePoint }: MapProps) {
+export function Map({ points, directions, transitSegments, onMapClick, onMarkerClick, isLoaded = true, loadError, activePoint }: MapProps) {
   const [map, setMap] = useState<google.maps.Map | null>(null)
   const [selectedPoint, setSelectedPoint] = useState<Point | null>(null)
 
@@ -97,6 +98,16 @@ export function Map({ points, directions, transitSegments, onMapClick, onMarkerC
       }
     }
   }, [map, points])
+
+  if (loadError) {
+    return (
+      <div className="w-full h-full flex flex-col items-center justify-center bg-muted rounded-lg p-4 text-center">
+        <AlertTriangle className="h-8 w-8 text-destructive mb-2" />
+        <p className="text-sm font-medium text-destructive">Erro ao carregar o mapa</p>
+        <p className="text-xs text-muted-foreground mt-1">{loadError.message}</p>
+      </div>
+    )
+  }
 
   if (!isLoaded) {
     return (
