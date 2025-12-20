@@ -17,6 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { getCategoryConfig } from "@/lib/constants"
 
 import { AddPointToItineraryDialog } from "./add-point-dialog"
 
@@ -182,8 +183,14 @@ export function ItineraryPlanner({ tripId, points, itineraries, onUpdate, onOpti
                 </div>
               ) : (
                 <div className="space-y-2">
-                  {itinerary.items.map((item, index) => (
-                    <div key={item.id || index} className="flex items-center gap-2 p-2 bg-muted rounded-md text-sm group">
+                  {itinerary.items.map((item, index) => {
+                    const categoryConfig = getCategoryConfig(item.point.category || undefined);
+                    return (
+                    <div 
+                      key={item.id || index} 
+                      className="flex items-center gap-2 p-2 bg-muted rounded-md text-sm group"
+                      style={{ borderLeft: `3px solid ${categoryConfig.color}` }}
+                    >
                       <span className="font-mono text-xs bg-background px-1.5 py-0.5 rounded border">
                         {index + 1}
                       </span>
@@ -217,7 +224,7 @@ export function ItineraryPlanner({ tripId, points, itineraries, onUpdate, onOpti
                         </Button>
                       </div>
                     </div>
-                  ))}
+                  )})}
                 </div>
               )}
               <AddPointToItineraryDialog 

@@ -1,10 +1,9 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { firestore } from "@/lib/firebase";
 import { z } from "zod";
-import { GEMINI_MODEL_NAME } from "@/lib/gemini";
+import { GEMINI_MODEL_NAME, getGeminiModel } from "@/lib/gemini";
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "";
 const GEMINI_MODEL = GEMINI_MODEL_NAME;
@@ -107,8 +106,7 @@ Responda sempre em Português do Brasil.
 `;
 
     // 3. Call Gemini API
-    const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({ model: GEMINI_MODEL });
+    const model = getGeminiModel(GEMINI_MODEL);
 
     const chat = model.startChat({
       history: [

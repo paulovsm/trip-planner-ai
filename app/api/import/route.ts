@@ -59,7 +59,7 @@ export async function POST(req: NextRequest) {
       Não use markdown code blocks.
       
       Texto do roteiro:
-      ${text.substring(0, 30000)} // Limit context window if necessary
+      ${text} // Limit context window if necessary
     `;
 
     const result = await model.generateContent(prompt);

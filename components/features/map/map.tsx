@@ -1,8 +1,9 @@
 "use client"
 
-import { GoogleMap, useJsApiLoader, Marker, InfoWindow, DirectionsRenderer } from "@react-google-maps/api"
+import { GoogleMap, useJsApiLoader, Marker, InfoWindow, DirectionsRenderer, OverlayView } from "@react-google-maps/api"
 import { useState, useCallback, useEffect } from "react"
 import { Loader2, AlertTriangle } from "lucide-react"
+import { getCategoryConfig } from "@/lib/constants"
 
 const containerStyle = {
   width: "100%",
@@ -158,18 +159,40 @@ export function Map({ points, directions, transitSegments, onMapClick, onMarkerC
         />
       ))}
 
-      {points.map((point) => (
-        (typeof point.latitude === 'number' && typeof point.longitude === 'number') ? (
-          <Marker
+      {points.map((point) => {
+        if (typeof point.latitude !== 'number' || typeof point.longitude !== 'number') return null;
+        
+        const categoryConfig = getCategoryConfig(point.category || undefined);
+        const IconComponent = categoryConfig.icon;
+        
+        return (
+          <OverlayView
             key={point.id}
             position={{ lat: point.latitude, lng: point.longitude }}
-            onClick={() => {
-              setSelectedPoint(point)
-              onMarkerClick?.(point)
-            }}
-          />
-        ) : null
-      ))}
+            mapPaneName={OverlayView.OVERLAY_MOUSE_TARGET}
+          >
+            <div
+              className="relative flex flex-col items-center cursor-pointer transform -translate-x-1/2 -translate-y-full hover:scale-110 transition-transform z-10 hover:z-20 group"
+              onClick={(e) => {
+                e.stopPropagation();
+                setSelectedPoint(point);
+                onMarkerClick?.(point);
+              }}
+            >
+              <div 
+                className="w-8 h-8 rounded-full border-2 border-white shadow-lg flex items-center justify-center transition-transform"
+                style={{ backgroundColor: categoryConfig.color }}
+              >
+                <IconComponent className="w-4 h-4 text-white" />
+              </div>
+              <div 
+                className="w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[8px] -mt-0.5"
+                style={{ borderTopColor: categoryConfig.color }}
+              />
+            </div>
+          </OverlayView>
+        )
+      })}
 
       {selectedPoint && (
         <InfoWindow
@@ -179,7 +202,10 @@ export function Map({ points, directions, transitSegments, onMapClick, onMarkerC
           <div className="p-2 max-w-xs">
             <h3 className="font-bold text-sm">{selectedPoint.name}</h3>
             {selectedPoint.category && (
-              <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full mt-1 inline-block">
+              <span 
+                className="text-xs px-2 py-0.5 rounded-full mt-1 inline-block text-white"
+                style={{ backgroundColor: getCategoryConfig(selectedPoint.category).color }}
+              >
                 {selectedPoint.category}
               </span>
             )}

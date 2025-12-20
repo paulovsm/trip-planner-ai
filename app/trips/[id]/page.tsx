@@ -16,6 +16,7 @@ import { useJsApiLoader } from "@react-google-maps/api"
 import { ChatPanel } from "@/components/features/chat/chat-panel"
 import { Input } from "@/components/ui/input"
 import { toast } from "sonner"
+import { getCategoryConfig } from "@/lib/constants"
 
 interface Point {
   id: string
@@ -335,10 +336,15 @@ export default function TripDetailPage() {
                       <h3 className="text-sm font-medium text-muted-foreground sticky top-0 py-2 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 z-10">
                         {city} ({points.length})
                       </h3>
-                      {points.map((point) => (
+                      {points.map((point) => {
+                        const categoryConfig = getCategoryConfig(point.category || undefined);
+                        const CategoryIcon = categoryConfig.icon;
+                        
+                        return (
                         <Card 
                           key={point.id} 
                           className={`cursor-pointer hover:bg-muted/50 transition-colors ${activePoint?.id === point.id ? 'border-primary bg-muted/50' : ''}`}
+                          style={{ borderLeft: `4px solid ${categoryConfig.color}` }}
                           onClick={() => {
                             setActivePoint(point)
                             if (viewMode === 'list') setViewMode('map')
@@ -347,7 +353,7 @@ export default function TripDetailPage() {
                           <CardContent className="p-4">
                             <div className="flex items-start gap-3">
                               <div className="mt-1">
-                                <MapPin className="h-4 w-4 text-primary" />
+                                <CategoryIcon className="h-4 w-4" style={{ color: categoryConfig.color }} />
                               </div>
                               <div className="flex-1">
                                 <div className="flex justify-between items-start">
@@ -374,7 +380,10 @@ export default function TripDetailPage() {
                                 </p>
                                 <div className="flex flex-wrap gap-2 mt-2">
                                   {point.category && (
-                                    <span className="text-xs bg-secondary px-2 py-0.5 rounded-full">
+                                    <span 
+                                      className="text-xs px-2 py-0.5 rounded-full text-white"
+                                      style={{ backgroundColor: categoryConfig.color }}
+                                    >
                                       {point.category}
                                     </span>
                                   )}
@@ -394,7 +403,7 @@ export default function TripDetailPage() {
                             </div>
                           </CardContent>
                         </Card>
-                      ))}
+                      )})}
                     </div>
                   ))
                 })()}
