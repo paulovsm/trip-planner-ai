@@ -7,7 +7,7 @@ import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { format } from "date-fns"
 import { ptBR } from "date-fns/locale"
-import { Calendar as CalendarIcon, Plus, Trash2, Map as MapIcon, ArrowUp, ArrowDown, Footprints, Bus, Car } from "lucide-react"
+import { Calendar as CalendarIcon, Plus, Trash2, Map as MapIcon, ArrowUp, ArrowDown, Footprints, Bus, Car, ExternalLink } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import {
@@ -97,6 +97,26 @@ export function ItineraryPlanner({ tripId, points, itineraries, onUpdate, onOpti
       toast.error("Erro ao remover ponto.")
       console.error(error)
     }
+  }
+
+  const openInGoogleMaps = (items: ItineraryItem[], mode: string) => {
+    if (items.length < 2) return;
+
+    const origin = `${items[0].point.latitude},${items[0].point.longitude}`;
+    const destination = `${items[items.length - 1].point.latitude},${items[items.length - 1].point.longitude}`;
+    
+    const waypoints = items.slice(1, -1).map(item => `${item.point.latitude},${item.point.longitude}`).join('|');
+    
+    let mapMode = 'driving';
+    if (mode === 'WALKING') mapMode = 'walking';
+    if (mode === 'TRANSIT') mapMode = 'transit';
+    
+    let url = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&travelmode=${mapMode}`;
+    if (waypoints) {
+      url += `&waypoints=${waypoints}`;
+    }
+    
+    window.open(url, '_blank');
   }
 
   const handleMoveItem = async (itineraryId: string, items: ItineraryItem[], index: number, direction: 'up' | 'down') => {
@@ -267,6 +287,15 @@ export function ItineraryPlanner({ tripId, points, itineraries, onUpdate, onOpti
                 >
                   <MapIcon className="mr-2 h-3 w-3" />
                   Otimizar
+                </Button>
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  onClick={() => openInGoogleMaps(itinerary.items, travelMode)}
+                  disabled={itinerary.items.length < 2}
+                  title="Abrir rota no Google Maps"
+                >
+                  <ExternalLink className="h-3 w-3" />
                 </Button>
               </div>
             </CardContent>

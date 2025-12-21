@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useQuery } from "@tanstack/react-query"
-import { Loader2, MapPin, Calendar as CalendarIcon, Plus, MessageSquare, X, AlertTriangle, Search, Layout, Map as MapIcon, List as ListIcon, Trash2 } from "lucide-react"
+import { Loader2, MapPin, Calendar as CalendarIcon, Plus, MessageSquare, X, AlertTriangle, Search, Layout, Map as MapIcon, List as ListIcon, Trash2, ExternalLink } from "lucide-react"
 import { useParams } from "next/navigation"
 import { format } from "date-fns"
 import { ptBR } from "date-fns/locale"
@@ -365,6 +365,18 @@ export default function TripDetailPage() {
                                       itineraries={trip.itineraries}
                                       onSuccess={refetch}
                                     />
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-6 w-6 text-muted-foreground hover:text-primary"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        window.open(`https://www.google.com/maps/search/?api=1&query=${point.latitude},${point.longitude}`, '_blank');
+                                      }}
+                                      title="Abrir no Google Maps"
+                                    >
+                                      <ExternalLink className="h-4 w-4" />
+                                    </Button>
                                     <Button
                                       variant="ghost"
                                       size="icon"

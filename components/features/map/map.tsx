@@ -2,7 +2,7 @@
 
 import { GoogleMap, useJsApiLoader, Marker, InfoWindow, DirectionsRenderer, OverlayView } from "@react-google-maps/api"
 import { useState, useCallback, useEffect } from "react"
-import { Loader2, AlertTriangle } from "lucide-react"
+import { Loader2, AlertTriangle, ExternalLink } from "lucide-react"
 import { getCategoryConfig } from "@/lib/constants"
 
 const containerStyle = {
@@ -214,6 +214,15 @@ export function Map({ points, directions, transitSegments, onMapClick, onMarkerC
                 {selectedPoint.description}
               </p>
             )}
+            <a 
+              href={`https://www.google.com/maps/search/?api=1&query=${selectedPoint.latitude},${selectedPoint.longitude}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1 text-xs text-blue-600 hover:underline mt-2"
+            >
+              <ExternalLink className="h-3 w-3" />
+              Abrir no Maps
+            </a>
           </div>
         </InfoWindow>
       )}
