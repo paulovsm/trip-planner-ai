@@ -2,7 +2,7 @@
 
 import { GoogleMap, useJsApiLoader, Marker, InfoWindow, DirectionsRenderer, OverlayView } from "@react-google-maps/api"
 import { useState, useCallback, useEffect } from "react"
-import { Loader2, AlertTriangle, ExternalLink } from "lucide-react"
+import { Loader2, AlertTriangle, ExternalLink, Crosshair } from "lucide-react"
 import { getCategoryConfig } from "@/lib/constants"
 
 const containerStyle = {
@@ -39,6 +39,33 @@ interface MapProps {
 export function Map({ points, directions, transitSegments, onMapClick, onMarkerClick, isLoaded = true, loadError, activePoint }: MapProps) {
   const [map, setMap] = useState<google.maps.Map | null>(null)
   const [selectedPoint, setSelectedPoint] = useState<Point | null>(null)
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null)
+  const [isLocating, setIsLocating] = useState(false)
+
+  const handleLocateMe = () => {
+    if (!navigator.geolocation) {
+      alert("Geolocalização não é suportada pelo seu navegador.");
+      return;
+    }
+
+    setIsLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const pos = {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+        };
+        setUserLocation(pos);
+        map?.panTo(pos);
+        map?.setZoom(15);
+        setIsLocating(false);
+      },
+      () => {
+        alert("Erro ao obter sua localização.");
+        setIsLocating(false);
+      }
+    );
+  };
 
   // Update internal selected point when activePoint prop changes
   useEffect(() => {
@@ -58,7 +85,7 @@ export function Map({ points, directions, transitSegments, onMapClick, onMarkerC
     if (points.length > 0) {
       points.forEach((point) => {
         // Check for valid coordinates (including 0)
-        if (typeof point.latitude === 'number' && typeof point.longitude === 'number') {
+        if (point && typeof point.latitude === 'number' && typeof point.longitude === 'number') {
           bounds.extend({ lat: point.latitude, lng: point.longitude })
           hasValidPoints = true
         }
@@ -88,7 +115,7 @@ export function Map({ points, directions, transitSegments, onMapClick, onMarkerC
       let hasValidPoints = false
       
       points.forEach((point) => {
-        if (typeof point.latitude === 'number' && typeof point.longitude === 'number') {
+        if (point && typeof point.latitude === 'number' && typeof point.longitude === 'number') {
           bounds.extend({ lat: point.latitude, lng: point.longitude })
           hasValidPoints = true
         }
@@ -160,6 +187,7 @@ export function Map({ points, directions, transitSegments, onMapClick, onMarkerC
       ))}
 
       {points.map((point) => {
+        if (!point) return null;
         if (typeof point.latitude !== 'number' || typeof point.longitude !== 'number') return null;
         
         const categoryConfig = getCategoryConfig(point.category || undefined);
@@ -226,6 +254,33 @@ export function Map({ points, directions, transitSegments, onMapClick, onMarkerC
           </div>
         </InfoWindow>
       )}
+
+      {userLocation && (
+        <Marker
+          position={userLocation}
+          icon={{
+            path: google.maps.SymbolPath.CIRCLE,
+            scale: 7,
+            fillColor: "#4285F4",
+            fillOpacity: 1,
+            strokeColor: "white",
+            strokeWeight: 2,
+          }}
+          title="Sua localização"
+        />
+      )}
+
+      <button
+        className="absolute bottom-24 right-4 bg-white p-2 md:p-3 rounded-full shadow-md hover:bg-gray-100 focus:outline-none z-10"
+        onClick={handleLocateMe}
+        title="Minha localização"
+      >
+        {isLocating ? (
+          <Loader2 className="h-5 w-5 md:h-6 md:w-6 animate-spin text-primary" />
+        ) : (
+          <Crosshair className="h-5 w-5 md:h-6 md:w-6 text-gray-700" />
+        )}
+      </button>
     </GoogleMap>
   )
 }

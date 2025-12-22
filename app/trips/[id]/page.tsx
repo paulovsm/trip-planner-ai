@@ -66,6 +66,7 @@ export default function TripDetailPage() {
   const [activePoint, setActivePoint] = useState<Point | null>(null)
   const [searchTerm, setSearchTerm] = useState("")
   const [viewMode, setViewMode] = useState<'split' | 'map' | 'list'>('split')
+  const [filteredMapPoints, setFilteredMapPoints] = useState<Point[] | null>(null)
 
   const { isLoaded: isScriptLoaded, loadError } = useJsApiLoader({
     id: "google-map-script",
@@ -215,6 +216,13 @@ export default function TripDetailPage() {
       console.error(error)
     }
   }
+
+  const handleViewItineraryOnMap = useCallback((items: ItineraryItem[]) => {
+    const points = items.map(item => item.point);
+    setFilteredMapPoints(points);
+    if (viewMode === 'list') setViewMode('map');
+    toast.info(`Visualizando ${points.length} pontos do roteiro no mapa.`);
+  }, [viewMode]);
 
   if (isLoading) {
     return (
@@ -437,6 +445,7 @@ export default function TripDetailPage() {
                   itineraries={trip.itineraries}
                   onUpdate={refetch}
                   onOptimize={handleOptimize}
+                  onViewOnMap={handleViewItineraryOnMap}
                 />
               </div>
             </TabsContent>
@@ -462,8 +471,22 @@ export default function TripDetailPage() {
             </div>
           )}
           <div className="flex-1 relative">
+            {filteredMapPoints && (
+              <div className="absolute top-4 left-4 z-10 bg-background/90 backdrop-blur p-2 rounded-md shadow-md border flex items-center gap-2">
+                <span className="text-sm font-medium">Filtro ativo: {filteredMapPoints.length} pontos</span>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-6 px-2 text-muted-foreground hover:text-foreground"
+                  onClick={() => setFilteredMapPoints(null)}
+                >
+                  <X className="h-3 w-3 mr-1" />
+                  Limpar
+                </Button>
+              </div>
+            )}
             <Map 
-              points={trip.points} 
+              points={filteredMapPoints || trip.points} 
               directions={directions} 
               transitSegments={transitSegments}
               isLoaded={isScriptLoaded}

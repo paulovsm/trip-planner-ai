@@ -39,6 +39,26 @@ export async function DELETE(
       return NextResponse.json({ error: "Point not found" }, { status: 404 })
     }
 
+    // Remove point from any itineraries
+    const itinerariesSnapshot = await tripRef.collection('itineraries').get();
+    const batch = firestore.batch();
+    let hasUpdates = false;
+
+    itinerariesSnapshot.docs.forEach(doc => {
+      const data = doc.data();
+      if (data.items && Array.isArray(data.items)) {
+        const newItems = data.items.filter((item: any) => item.pointId !== params.pointId);
+        if (newItems.length !== data.items.length) {
+          batch.update(doc.ref, { items: newItems });
+          hasUpdates = true;
+        }
+      }
+    });
+
+    if (hasUpdates) {
+      await batch.commit();
+    }
+
     await pointRef.delete();
 
     return NextResponse.json({ success: true })

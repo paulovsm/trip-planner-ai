@@ -34,14 +34,14 @@ export async function POST(req: NextRequest) {
     // Use Gemini to extract structured data
     const model = getGeminiModel();
     const prompt = `
-      Analise o seguinte texto de um roteiro de viagem e extraia duas informações principais:
+      Analise minuncionsamente o seguinte texto de um roteiro de viagem e extraia duas informações principais:
       1. Pontos de interesse (POIs)
       2. Roteiro sugerido (Itineraries)
 
       Para cada POI, identifique:
       - name (Nome do local)
       - description (Breve descrição)
-      - category (Categoria ex: Museu, Restaurante, Parque, Monumento, Hotel, Transporte)
+      - category (Categoria. Escolha OBRIGATORIAMENTE uma das seguintes: Hospedagem, Gastronomia, Cultura, História, Natureza, Compras, Turismo, Entretenimento, Transporte)
       - address (Endereço ou localização aproximada)
       - city (Cidade onde o ponto está localizado)
 

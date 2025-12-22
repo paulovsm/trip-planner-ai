@@ -54,10 +54,14 @@ export async function GET(
       items = await Promise.all(items.map(async (item: any) => {
         if (item.pointId) {
             const point = points.find(p => p.id === item.pointId);
+            if (!point) return null; // Point deleted or not found
             return { ...item, point };
         }
         return item;
       }));
+
+      // Filter out null items (deleted points)
+      items = items.filter((item: any) => item !== null);
 
       return {
         ...data,

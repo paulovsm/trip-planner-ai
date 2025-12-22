@@ -7,7 +7,7 @@ import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { format } from "date-fns"
 import { ptBR } from "date-fns/locale"
-import { Calendar as CalendarIcon, Plus, Trash2, Map as MapIcon, ArrowUp, ArrowDown, Footprints, Bus, Car, ExternalLink } from "lucide-react"
+import { Calendar as CalendarIcon, Plus, Trash2, Map as MapIcon, ArrowUp, ArrowDown, Footprints, Bus, Car, ExternalLink, Eye } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import {
@@ -50,9 +50,10 @@ interface ItineraryPlannerProps {
   itineraries: Itinerary[]
   onUpdate: () => void
   onOptimize: (items: ItineraryItem[], mode: string) => void
+  onViewOnMap: (items: ItineraryItem[]) => void
 }
 
-export function ItineraryPlanner({ tripId, points, itineraries, onUpdate, onOptimize }: ItineraryPlannerProps) {
+export function ItineraryPlanner({ tripId, points, itineraries, onUpdate, onOptimize, onViewOnMap }: ItineraryPlannerProps) {
   const [date, setDate] = useState<Date>()
   const [isCreating, setIsCreating] = useState(false)
   const [travelMode, setTravelMode] = useState<string>("WALKING")
@@ -204,6 +205,7 @@ export function ItineraryPlanner({ tripId, points, itineraries, onUpdate, onOpti
               ) : (
                 <div className="space-y-2">
                   {itinerary.items.map((item, index) => {
+                    if (!item?.point) return null;
                     const categoryConfig = getCategoryConfig(item.point.category || undefined);
                     return (
                     <div 
@@ -296,6 +298,15 @@ export function ItineraryPlanner({ tripId, points, itineraries, onUpdate, onOpti
                   title="Abrir rota no Google Maps"
                 >
                   <ExternalLink className="h-3 w-3" />
+                </Button>
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  onClick={() => onViewOnMap(itinerary.items)}
+                  disabled={itinerary.items.length === 0}
+                  title="Visualizar no mapa"
+                >
+                  <Eye className="h-3 w-3" />
                 </Button>
               </div>
             </CardContent>
