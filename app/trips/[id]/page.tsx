@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useQuery } from "@tanstack/react-query"
-import { Loader2, MapPin, Calendar as CalendarIcon, Plus, MessageSquare, X, AlertTriangle, Search, Layout, Map as MapIcon, List as ListIcon, Trash2, ExternalLink } from "lucide-react"
+import { Loader2, MapPin, Calendar as CalendarIcon, Plus, MessageSquare, X, AlertTriangle, Search, Layout, Map as MapIcon, List as ListIcon, Trash2, ExternalLink, CheckCircle2, Circle } from "lucide-react"
 import { useParams } from "next/navigation"
 import { format } from "date-fns"
 import { ptBR } from "date-fns/locale"
@@ -27,6 +27,7 @@ interface Point {
   city?: string | null
   latitude: number
   longitude: number
+  visited?: boolean
 }
 
 import { ItineraryPlanner } from "@/components/features/optimizer/itinerary-planner"
@@ -37,6 +38,7 @@ interface ItineraryItem {
   id: string
   point: Point
   order: number
+  visited?: boolean
 }
 
 interface Itinerary {
@@ -217,6 +219,23 @@ export default function TripDetailPage() {
     }
   }
 
+  const handleTogglePointVisited = async (pointId: string, currentVisited: boolean) => {
+    try {
+      const response = await fetch(`/api/trips/${tripId}/points/${pointId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ visited: !currentVisited }),
+      })
+
+      if (!response.ok) throw new Error("Failed to update point")
+
+      refetch()
+    } catch (error) {
+      toast.error("Erro ao atualizar status do ponto.")
+      console.error(error)
+    }
+  }
+
   const handleViewItineraryOnMap = useCallback((items: ItineraryItem[]) => {
     const points = items.map(item => item.point);
     setFilteredMapPoints(points);
@@ -347,12 +366,17 @@ export default function TripDetailPage() {
                       {points.map((point) => {
                         const categoryConfig = getCategoryConfig(point.category || undefined);
                         const CategoryIcon = categoryConfig.icon;
+                        const isVisited = point.visited || false;
                         
                         return (
                         <Card 
                           key={point.id} 
-                          className={`cursor-pointer hover:bg-muted/50 transition-colors ${activePoint?.id === point.id ? 'border-primary bg-muted/50' : ''}`}
-                          style={{ borderLeft: `4px solid ${categoryConfig.color}` }}
+                          className={cn(
+                            "cursor-pointer hover:bg-muted/50 transition-colors",
+                            activePoint?.id === point.id && "border-primary bg-muted/50",
+                            isVisited && "opacity-70 bg-muted/30"
+                          )}
+                          style={{ borderLeft: `4px solid ${isVisited ? '#9ca3af' : categoryConfig.color}` }}
                           onClick={() => {
                             setActivePoint(point)
                             if (viewMode === 'list') setViewMode('map')
@@ -361,12 +385,32 @@ export default function TripDetailPage() {
                           <CardContent className="p-4">
                             <div className="flex items-start gap-3">
                               <div className="mt-1">
-                                <CategoryIcon className="h-4 w-4" style={{ color: categoryConfig.color }} />
+                                {isVisited ? (
+                                  <CheckCircle2 className="h-4 w-4 text-green-600" />
+                                ) : (
+                                  <CategoryIcon className="h-4 w-4" style={{ color: categoryConfig.color }} />
+                                )}
                               </div>
                               <div className="flex-1">
                                 <div className="flex justify-between items-start">
-                                  <h3 className="font-medium">{point.name}</h3>
+                                  <h3 className={cn("font-medium", isVisited && "line-through text-muted-foreground")}>{point.name}</h3>
                                   <div className="flex items-center -mt-1 -mr-2">
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-6 w-6 text-muted-foreground hover:text-primary"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleTogglePointVisited(point.id, isVisited);
+                                      }}
+                                      title={isVisited ? "Marcar como não visitado" : "Marcar como visitado"}
+                                    >
+                                      {isVisited ? (
+                                        <CheckCircle2 className="h-4 w-4 text-green-600" />
+                                      ) : (
+                                        <Circle className="h-4 w-4" />
+                                      )}
+                                    </Button>
                                     <AddToItineraryDialog 
                                       tripId={trip.id}
                                       pointId={point.id}
@@ -446,6 +490,7 @@ export default function TripDetailPage() {
                   onUpdate={refetch}
                   onOptimize={handleOptimize}
                   onViewOnMap={handleViewItineraryOnMap}
+                  onTogglePointVisited={handleTogglePointVisited}
                 />
               </div>
             </TabsContent>

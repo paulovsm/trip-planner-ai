@@ -2,8 +2,9 @@
 
 import { GoogleMap, useJsApiLoader, Marker, InfoWindow, DirectionsRenderer, OverlayView } from "@react-google-maps/api"
 import { useState, useCallback, useEffect } from "react"
-import { Loader2, AlertTriangle, ExternalLink, Crosshair } from "lucide-react"
+import { Loader2, AlertTriangle, ExternalLink, Crosshair, CheckCircle2 } from "lucide-react"
 import { getCategoryConfig } from "@/lib/constants"
+import { cn } from "@/lib/utils"
 
 const containerStyle = {
   width: "100%",
@@ -23,6 +24,7 @@ interface Point {
   longitude: number
   category?: string | null
   description?: string | null
+  visited?: boolean
 }
 
 interface MapProps {
@@ -192,6 +194,8 @@ export function Map({ points, directions, transitSegments, onMapClick, onMarkerC
         
         const categoryConfig = getCategoryConfig(point.category || undefined);
         const IconComponent = categoryConfig.icon;
+        const isVisited = point.visited || false;
+        const markerColor = isVisited ? '#9ca3af' : categoryConfig.color;
         
         return (
           <OverlayView
@@ -200,7 +204,10 @@ export function Map({ points, directions, transitSegments, onMapClick, onMarkerC
             mapPaneName={OverlayView.OVERLAY_MOUSE_TARGET}
           >
             <div
-              className="relative flex flex-col items-center cursor-pointer transform -translate-x-1/2 -translate-y-full hover:scale-110 transition-transform z-10 hover:z-20 group"
+              className={cn(
+                "relative flex flex-col items-center cursor-pointer transform -translate-x-1/2 -translate-y-full hover:scale-110 transition-transform z-10 hover:z-20 group",
+                isVisited && "opacity-80"
+              )}
               onClick={(e) => {
                 e.stopPropagation();
                 setSelectedPoint(point);
@@ -209,13 +216,17 @@ export function Map({ points, directions, transitSegments, onMapClick, onMarkerC
             >
               <div 
                 className="w-8 h-8 rounded-full border-2 border-white shadow-lg flex items-center justify-center transition-transform"
-                style={{ backgroundColor: categoryConfig.color }}
+                style={{ backgroundColor: markerColor }}
               >
-                <IconComponent className="w-4 h-4 text-white" />
+                {isVisited ? (
+                   <CheckCircle2 className="w-4 h-4 text-white" />
+                ) : (
+                   <IconComponent className="w-4 h-4 text-white" />
+                )}
               </div>
               <div 
                 className="w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[8px] -mt-0.5"
-                style={{ borderTopColor: categoryConfig.color }}
+                style={{ borderTopColor: markerColor }}
               />
             </div>
           </OverlayView>

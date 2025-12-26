@@ -7,7 +7,7 @@ import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { format } from "date-fns"
 import { ptBR } from "date-fns/locale"
-import { Calendar as CalendarIcon, Plus, Trash2, Map as MapIcon, ArrowUp, ArrowDown, Footprints, Bus, Car, ExternalLink, Eye } from "lucide-react"
+import { Calendar as CalendarIcon, Plus, Trash2, Map as MapIcon, ArrowUp, ArrowDown, Footprints, Bus, Car, ExternalLink, Eye, CheckCircle2, Circle } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import {
@@ -30,6 +30,7 @@ interface Point {
   city?: string | null
   latitude: number
   longitude: number
+  visited?: boolean
 }
 
 interface ItineraryItem {
@@ -51,9 +52,10 @@ interface ItineraryPlannerProps {
   onUpdate: () => void
   onOptimize: (items: ItineraryItem[], mode: string) => void
   onViewOnMap: (items: ItineraryItem[]) => void
+  onTogglePointVisited: (pointId: string, currentVisited: boolean) => void
 }
 
-export function ItineraryPlanner({ tripId, points, itineraries, onUpdate, onOptimize, onViewOnMap }: ItineraryPlannerProps) {
+export function ItineraryPlanner({ tripId, points, itineraries, onUpdate, onOptimize, onViewOnMap, onTogglePointVisited }: ItineraryPlannerProps) {
   const [date, setDate] = useState<Date>()
   const [isCreating, setIsCreating] = useState(false)
   const [travelMode, setTravelMode] = useState<string>("WALKING")
@@ -207,16 +209,33 @@ export function ItineraryPlanner({ tripId, points, itineraries, onUpdate, onOpti
                   {itinerary.items.map((item, index) => {
                     if (!item?.point) return null;
                     const categoryConfig = getCategoryConfig(item.point.category || undefined);
+                    const isVisited = item.point.visited || false;
                     return (
                     <div 
                       key={item.id || index} 
-                      className="flex items-center gap-2 p-2 bg-muted rounded-md text-sm group"
-                      style={{ borderLeft: `3px solid ${categoryConfig.color}` }}
+                      className={cn(
+                        "flex items-center gap-2 p-2 bg-muted rounded-md text-sm group transition-colors",
+                        isVisited && "bg-muted/50 opacity-70"
+                      )}
+                      style={{ borderLeft: `3px solid ${isVisited ? '#9ca3af' : categoryConfig.color}` }}
                     >
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 shrink-0"
+                        onClick={() => onTogglePointVisited(item.point.id, isVisited)}
+                        title={isVisited ? "Marcar como não visitado" : "Marcar como visitado"}
+                      >
+                        {isVisited ? (
+                          <CheckCircle2 className="h-4 w-4 text-green-600" />
+                        ) : (
+                          <Circle className="h-4 w-4 text-muted-foreground" />
+                        )}
+                      </Button>
                       <span className="font-mono text-xs bg-background px-1.5 py-0.5 rounded border">
                         {index + 1}
                       </span>
-                      <span className="flex-1 truncate">{item.point.name}</span>
+                      <span className={cn("flex-1 truncate", isVisited && "line-through text-muted-foreground")}>{item.point.name}</span>
                       <div className="flex items-center gap-1 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                         <Button
                           variant="ghost"
