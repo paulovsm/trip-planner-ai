@@ -1,6 +1,10 @@
+"use client"
+
+import { useState } from "react";
 import { cn } from "@/lib/utils";
-import { Bot, User } from "lucide-react";
+import { Bot, User, Copy, Check } from "lucide-react";
 import ReactMarkdown from "react-markdown";
+import { Button } from "@/components/ui/button";
 
 interface ChatMessageProps {
   role: "user" | "model";
@@ -17,6 +21,17 @@ const markdownStyles = [
 
 export function ChatMessage({ role, content }: ChatMessageProps) {
   const isUser = role === "user";
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(content);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error("Failed to copy text:", err);
+    }
+  };
 
   return (
     <div className={cn("flex gap-3 mb-4", isUser ? "flex-row-reverse" : "flex-row")}>
@@ -27,15 +42,30 @@ export function ChatMessage({ role, content }: ChatMessageProps) {
         {isUser ? <User className="w-5 h-5" /> : <Bot className="w-5 h-5" />}
       </div>
       <div className={cn(
-        "rounded-lg px-4 py-2 max-w-[80%] text-sm",
+        "rounded-lg px-4 py-2 max-w-[80%] text-sm relative group",
         isUser ? "bg-primary text-primary-foreground" : "bg-muted"
       )}>
         {isUser ? (
           <span className="whitespace-pre-wrap">{content}</span>
         ) : (
-          <div className={markdownStyles}>
-            <ReactMarkdown>{content}</ReactMarkdown>
-          </div>
+          <>
+            <div className={markdownStyles}>
+              <ReactMarkdown>{content}</ReactMarkdown>
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+              onClick={handleCopy}
+              title={copied ? "Copiado!" : "Copiar resposta"}
+            >
+              {copied ? (
+                <Check className="h-3 w-3 text-green-600" />
+              ) : (
+                <Copy className="h-3 w-3" />
+              )}
+            </Button>
+          </>
         )}
       </div>
     </div>
