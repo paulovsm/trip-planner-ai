@@ -22,10 +22,7 @@ export function ChatPanel({ tripId }: ChatPanelProps) {
 
   const scrollToBottom = () => {
     if (scrollRef.current) {
-      const scrollContainer = scrollRef.current.querySelector('[data-radix-scroll-area-viewport]');
-      if (scrollContainer) {
-        scrollContainer.scrollTop = scrollContainer.scrollHeight;
-      }
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   };
 
@@ -72,8 +69,8 @@ export function ChatPanel({ tripId }: ChatPanelProps) {
   };
 
   return (
-    <div className="flex flex-col h-full border-l bg-background/50 backdrop-blur-sm">
-      <div className="p-4 border-b flex items-center gap-2 font-semibold text-primary">
+    <div className="flex flex-col flex-1 h-full min-h-0 border-l bg-background/50 backdrop-blur-sm">
+      <div className="p-4 border-b flex items-center gap-2 font-semibold text-primary flex-shrink-0">
         <Sparkles className="w-5 h-5" />
         Assistente IA
       </div>
@@ -100,7 +97,9 @@ export function ChatPanel({ tripId }: ChatPanelProps) {
         )}
       </div>
 
-      <ChatInput onSend={handleSendMessage} isLoading={isLoading} />
+      <div className="flex-shrink-0">
+        <ChatInput onSend={handleSendMessage} isLoading={isLoading} />
+      </div>
     </div>
   );
 }
