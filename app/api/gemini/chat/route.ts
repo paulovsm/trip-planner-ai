@@ -89,12 +89,12 @@ CONTEXTO DA VIAGEM:
 - Datas: ${formatDate(trip.startDate)} até ${formatDate(trip.endDate)}
 
 PONTOS DE INTERESSE SALVOS (${trip.points.length}):
-${trip.points.map((p: any) => `- ${p.name} (${p.category || "Sem categoria"}): ${p.description || ""}`).join("\n")}
+${trip.points.map((p: any) => `- ${p.name} (${p.category || "Sem categoria"})${p.visited ? " [VISITADO]" : ""}: ${p.description || ""}`).join("\n")}
 
 ITINERÁRIOS DEFINIDOS:
 ${trip.itineraries.map((it: any) => `
 - Dia ${it.date.toLocaleDateString()}:
-  ${it.items.map((item: any) => `  ${item.order}. ${item.point?.name || "Ponto desconhecido"}`).join("\n")}
+  ${it.items.map((item: any) => `  ${item.order}. ${item.point?.name || "Ponto desconhecido"}${item.point?.visited ? " [VISITADO]" : ""}`).join("\n")}
 `).join("\n")}
 
 SUA MISSÃO:
