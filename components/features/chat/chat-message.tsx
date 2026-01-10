@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { Bot, User, Copy, Check } from "lucide-react";
 import ReactMarkdown from "react-markdown";
@@ -22,14 +22,32 @@ const markdownStyles = [
 export function ChatMessage({ role, content }: ChatMessageProps) {
   const isUser = role === "user";
   const [copied, setCopied] = useState(false);
+  const contentRef = useRef<HTMLDivElement>(null);
 
   const handleCopy = async () => {
     try {
-      await navigator.clipboard.writeText(content);
+      // Get the rendered HTML from the content element
+      const htmlContent = contentRef.current?.innerHTML || "";
+      
+      // Create clipboard items with both HTML and plain text formats
+      // This preserves formatting when pasting into rich text apps like iPhone Notes
+      const clipboardItem = new ClipboardItem({
+        "text/html": new Blob([htmlContent], { type: "text/html" }),
+        "text/plain": new Blob([content], { type: "text/plain" }),
+      });
+      
+      await navigator.clipboard.write([clipboardItem]);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
-      console.error("Failed to copy text:", err);
+      // Fallback to plain text if ClipboardItem is not supported
+      try {
+        await navigator.clipboard.writeText(content);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      } catch (fallbackErr) {
+        console.error("Failed to copy text:", fallbackErr);
+      }
     }
   };
 
@@ -49,7 +67,7 @@ export function ChatMessage({ role, content }: ChatMessageProps) {
           <span className="whitespace-pre-wrap">{content}</span>
         ) : (
           <>
-            <div className={markdownStyles}>
+            <div ref={contentRef} className={markdownStyles}>
               <ReactMarkdown>{content}</ReactMarkdown>
             </div>
             <Button
