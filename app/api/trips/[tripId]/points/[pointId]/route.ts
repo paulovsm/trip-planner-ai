@@ -84,7 +84,7 @@ export async function PATCH(
     }
 
     const body = await req.json();
-    const { visited } = body;
+    const { visited, address, latitude, longitude, name, description, category, city } = body;
 
     const tripRef = firestore.collection('trips').doc(params.tripId);
     const tripDoc = await tripRef.get();
@@ -110,9 +110,20 @@ export async function PATCH(
       return NextResponse.json({ error: "Point not found" }, { status: 404 })
     }
 
-    await pointRef.update({ visited });
+    // Build update object with only provided fields
+    const updateData: Record<string, string | number | boolean | Date | null> = { updatedAt: new Date() };
+    if (visited !== undefined) updateData.visited = visited;
+    if (address !== undefined) updateData.address = address;
+    if (latitude !== undefined) updateData.latitude = latitude;
+    if (longitude !== undefined) updateData.longitude = longitude;
+    if (name !== undefined) updateData.name = name;
+    if (description !== undefined) updateData.description = description;
+    if (category !== undefined) updateData.category = category;
+    if (city !== undefined) updateData.city = city;
 
-    return NextResponse.json({ success: true, visited })
+    await pointRef.update(updateData);
+
+    return NextResponse.json({ success: true, ...updateData })
   } catch (error) {
     console.error("Error updating point:", error)
     return NextResponse.json(

@@ -53,9 +53,10 @@ interface ItineraryPlannerProps {
   onOptimize: (items: ItineraryItem[], mode: string) => void
   onViewOnMap: (items: ItineraryItem[]) => void
   onTogglePointVisited: (pointId: string, currentVisited: boolean) => void
+  onPointClick?: (point: Point) => void
 }
 
-export function ItineraryPlanner({ tripId, points, itineraries, onUpdate, onOptimize, onViewOnMap, onTogglePointVisited }: ItineraryPlannerProps) {
+export function ItineraryPlanner({ tripId, points, itineraries, onUpdate, onOptimize, onViewOnMap, onTogglePointVisited, onPointClick }: ItineraryPlannerProps) {
   const [date, setDate] = useState<Date>()
   const [isCreating, setIsCreating] = useState(false)
   const [travelMode, setTravelMode] = useState<string>("WALKING")
@@ -214,16 +215,17 @@ export function ItineraryPlanner({ tripId, points, itineraries, onUpdate, onOpti
                     <div 
                       key={item.id || index} 
                       className={cn(
-                        "flex items-center gap-2 p-2 bg-muted rounded-md text-sm group transition-colors",
+                        "flex items-center gap-2 p-2 bg-muted rounded-md text-sm group transition-colors cursor-pointer hover:bg-muted/70",
                         isVisited && "bg-muted/50 opacity-70"
                       )}
                       style={{ borderLeft: `3px solid ${isVisited ? '#9ca3af' : categoryConfig.color}` }}
+                      onClick={() => onPointClick?.(item.point)}
                     >
                       <Button
                         variant="ghost"
                         size="icon"
                         className="h-6 w-6 shrink-0"
-                        onClick={() => onTogglePointVisited(item.point.id, isVisited)}
+                        onClick={(e) => { e.stopPropagation(); onTogglePointVisited(item.point.id, isVisited); }}
                         title={isVisited ? "Marcar como não visitado" : "Marcar como visitado"}
                       >
                         {isVisited ? (
@@ -241,7 +243,7 @@ export function ItineraryPlanner({ tripId, points, itineraries, onUpdate, onOpti
                           variant="ghost"
                           size="icon"
                           className="h-6 w-6"
-                          onClick={() => handleMoveItem(itinerary.id, itinerary.items, index, 'up')}
+                          onClick={(e) => { e.stopPropagation(); handleMoveItem(itinerary.id, itinerary.items, index, 'up'); }}
                           disabled={index === 0}
                         >
                           <ArrowUp className="h-3 w-3" />
@@ -250,7 +252,7 @@ export function ItineraryPlanner({ tripId, points, itineraries, onUpdate, onOpti
                           variant="ghost"
                           size="icon"
                           className="h-6 w-6"
-                          onClick={() => handleMoveItem(itinerary.id, itinerary.items, index, 'down')}
+                          onClick={(e) => { e.stopPropagation(); handleMoveItem(itinerary.id, itinerary.items, index, 'down'); }}
                           disabled={index === itinerary.items.length - 1}
                         >
                           <ArrowDown className="h-3 w-3" />
@@ -259,7 +261,7 @@ export function ItineraryPlanner({ tripId, points, itineraries, onUpdate, onOpti
                           variant="ghost"
                           size="icon"
                           className="h-6 w-6 text-destructive hover:text-destructive"
-                          onClick={() => handleDeleteItem(itinerary.id, item.id)}
+                          onClick={(e) => { e.stopPropagation(); handleDeleteItem(itinerary.id, item.id); }}
                         >
                           <Trash2 className="h-3 w-3" />
                         </Button>

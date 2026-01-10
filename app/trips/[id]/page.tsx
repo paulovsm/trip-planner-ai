@@ -33,6 +33,7 @@ interface Point {
 import { ItineraryPlanner } from "@/components/features/optimizer/itinerary-planner"
 import { CreatePointDialog } from "@/components/features/optimizer/create-point-dialog"
 import { AddToItineraryDialog } from "@/components/features/optimizer/add-to-itinerary-dialog"
+import { EditPointDialog } from "@/components/features/optimizer/edit-point-dialog"
 
 interface ItineraryItem {
   id: string
@@ -243,6 +244,11 @@ export default function TripDetailPage() {
     toast.info(`Visualizando ${points.length} pontos do roteiro no mapa.`);
   }, [viewMode]);
 
+  const handleItineraryPointClick = useCallback((point: Point) => {
+    setActivePoint(point);
+    if (viewMode === 'list') setViewMode('split');
+  }, [viewMode]);
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -417,6 +423,11 @@ export default function TripDetailPage() {
                                       itineraries={trip.itineraries}
                                       onSuccess={refetch}
                                     />
+                                    <EditPointDialog
+                                      tripId={trip.id}
+                                      point={point}
+                                      onSuccess={refetch}
+                                    />
                                     <Button
                                       variant="ghost"
                                       size="icon"
@@ -491,6 +502,7 @@ export default function TripDetailPage() {
                   onOptimize={handleOptimize}
                   onViewOnMap={handleViewItineraryOnMap}
                   onTogglePointVisited={handleTogglePointVisited}
+                  onPointClick={handleItineraryPointClick}
                 />
               </div>
             </TabsContent>

@@ -196,6 +196,7 @@ export function Map({ points, directions, transitSegments, onMapClick, onMarkerC
         const IconComponent = categoryConfig.icon;
         const isVisited = point.visited || false;
         const markerColor = isVisited ? '#9ca3af' : categoryConfig.color;
+        const isSelected = selectedPoint?.id === point.id;
         
         return (
           <OverlayView
@@ -205,17 +206,25 @@ export function Map({ points, directions, transitSegments, onMapClick, onMarkerC
           >
             <div
               className={cn(
-                "relative flex flex-col items-center cursor-pointer transform -translate-x-1/2 -translate-y-full hover:scale-110 transition-transform z-10 hover:z-20 group",
+                "relative flex flex-col items-center cursor-pointer transform -translate-x-1/2 -translate-y-full hover:scale-110 transition-transform group",
                 isVisited && "opacity-80"
               )}
+              style={{ 
+                zIndex: isSelected ? 1000 : 10,
+                pointerEvents: 'auto'
+              }}
               onClick={(e) => {
                 e.stopPropagation();
+                e.preventDefault();
                 setSelectedPoint(point);
                 onMarkerClick?.(point);
               }}
             >
               <div 
-                className="w-8 h-8 rounded-full border-2 border-white shadow-lg flex items-center justify-center transition-transform"
+                className={cn(
+                  "w-8 h-8 rounded-full border-2 border-white shadow-lg flex items-center justify-center transition-transform",
+                  isSelected && "ring-2 ring-primary ring-offset-2"
+                )}
                 style={{ backgroundColor: markerColor }}
               >
                 {isVisited ? (
