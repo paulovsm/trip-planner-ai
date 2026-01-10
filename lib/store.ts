@@ -12,7 +12,7 @@ export const useStore = create<AppState>((set) => ({
 }))
 
 // Chat store for persisting chat messages across component mounts
-interface ChatMessage {
+export interface ChatMessage {
   role: "user" | "model";
   content: string;
 }

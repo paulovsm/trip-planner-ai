@@ -33,8 +33,9 @@ export function ChatPanel({ tripId }: ChatPanelProps) {
     setIsLoading(true);
 
     try {
-      // Prepare history for API (including the message we just added)
-      const currentMessages = getMessages(tripId);
+      // Prepare history for API
+      // We need to get current messages from store since `messages` is from the previous render
+      const currentMessages = useChatStore.getState().getMessages(tripId);
       const history = currentMessages.map(msg => ({
         role: msg.role,
         parts: [{ text: msg.content }]
