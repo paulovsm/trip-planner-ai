@@ -62,15 +62,14 @@ export function ItineraryPlanner({ tripId, points, itineraries, onUpdate, onOpti
   const [travelMode, setTravelMode] = useState<string>("WALKING")
   const [collapsedDays, setCollapsedDays] = useState<Set<string>>(new Set())
 
-  const today = startOfDay(new Date())
-
   const pastItineraryIds = useMemo(() => {
+    const today = startOfDay(new Date())
     return new Set(
       itineraries
         .filter((itinerary) => isBefore(startOfDay(new Date(itinerary.date)), today))
         .map((itinerary) => itinerary.id)
     )
-  }, [itineraries, today])
+  }, [itineraries])
 
   const toggleDayCollapsed = (itineraryId: string) => {
     setCollapsedDays((prev) => {
@@ -226,7 +225,11 @@ export function ItineraryPlanner({ tripId, points, itineraries, onUpdate, onOpti
             onClick={hasCollapsedDays ? expandAllDays : collapseAllPastDays}
             className="w-full sm:w-auto"
           >
-            <EyeOff className="mr-2 h-4 w-4" />
+            {hasCollapsedDays ? (
+              <Eye className="mr-2 h-4 w-4" />
+            ) : (
+              <EyeOff className="mr-2 h-4 w-4" />
+            )}
             {hasCollapsedDays ? "Expandir todos" : "Ocultar dias passados"}
           </Button>
         )}
