@@ -1,13 +1,13 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { format } from "date-fns"
+import { format, isBefore, startOfDay } from "date-fns"
 import { ptBR } from "date-fns/locale"
-import { Calendar as CalendarIcon, Plus, Trash2, Map as MapIcon, ArrowUp, ArrowDown, Footprints, Bus, Car, ExternalLink, Eye, CheckCircle2, Circle } from "lucide-react"
+import { Calendar as CalendarIcon, Plus, Trash2, Map as MapIcon, ArrowUp, ArrowDown, Footprints, Bus, Car, ExternalLink, Eye, CheckCircle2, Circle, ChevronDown, ChevronRight, EyeOff } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import {
@@ -60,6 +60,39 @@ export function ItineraryPlanner({ tripId, points, itineraries, onUpdate, onOpti
   const [date, setDate] = useState<Date>()
   const [isCreating, setIsCreating] = useState(false)
   const [travelMode, setTravelMode] = useState<string>("WALKING")
+  const [collapsedDays, setCollapsedDays] = useState<Set<string>>(new Set())
+
+  const pastItineraryIds = useMemo(() => {
+    const today = startOfDay(new Date())
+    return new Set(
+      itineraries
+        .filter((itinerary) => isBefore(startOfDay(new Date(itinerary.date)), today))
+        .map((itinerary) => itinerary.id)
+    )
+  }, [itineraries])
+
+  const toggleDayCollapsed = (itineraryId: string) => {
+    setCollapsedDays((prev) => {
+      const newSet = new Set(prev)
+      if (newSet.has(itineraryId)) {
+        newSet.delete(itineraryId)
+      } else {
+        newSet.add(itineraryId)
+      }
+      return newSet
+    })
+  }
+
+  const collapseAllPastDays = () => {
+    setCollapsedDays(new Set(pastItineraryIds))
+  }
+
+  const expandAllDays = () => {
+    setCollapsedDays(new Set())
+  }
+
+  const hasCollapsedDays = collapsedDays.size > 0
+  const hasPastDays = pastItineraryIds.size > 0
 
   const handleCreateItinerary = async () => {
     if (!date) return
@@ -185,19 +218,66 @@ export function ItineraryPlanner({ tripId, points, itineraries, onUpdate, onOpti
           <Plus className="mr-2 h-4 w-4" />
           Adicionar
         </Button>
+        {hasPastDays && (
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={hasCollapsedDays ? expandAllDays : collapseAllPastDays}
+            className="w-full sm:w-auto"
+          >
+            {hasCollapsedDays ? (
+              <Eye className="mr-2 h-4 w-4" />
+            ) : (
+              <EyeOff className="mr-2 h-4 w-4" />
+            )}
+            {hasCollapsedDays ? "Expandir todos" : "Ocultar dias passados"}
+          </Button>
+        )}
       </div>
 
       <div className="space-y-4">
-        {itineraries.map((itinerary) => (
-          <Card key={itinerary.id}>
+        {itineraries.map((itinerary) => {
+          const isCollapsed = collapsedDays.has(itinerary.id)
+          const isPastDay = pastItineraryIds.has(itinerary.id)
+          
+          return (
+          <Card key={itinerary.id} className={cn(isPastDay && "opacity-80")}>
             <CardHeader className="pb-2">
-              <CardTitle className="text-lg font-medium flex justify-between items-center">
-                {format(new Date(itinerary.date), "EEEE, d 'de' MMMM", { locale: ptBR })}
+              <CardTitle className="text-lg font-medium flex justify-between items-center gap-2">
+                <div className="flex items-center gap-2 flex-1">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6 shrink-0"
+                    onClick={() => toggleDayCollapsed(itinerary.id)}
+                    title={isCollapsed ? "Expandir dia" : "Ocultar dia"}
+                  >
+                    {isCollapsed ? (
+                      <ChevronRight className="h-4 w-4" />
+                    ) : (
+                      <ChevronDown className="h-4 w-4" />
+                    )}
+                  </Button>
+                  <span className={cn(isPastDay && "text-muted-foreground")}>
+                    {format(new Date(itinerary.date), "EEEE, d 'de' MMMM", { locale: ptBR })}
+                  </span>
+                  {isPastDay && (
+                    <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-full">
+                      Passado
+                    </span>
+                  )}
+                  {isCollapsed && itinerary.items.length > 0 && (
+                    <span className="text-xs text-muted-foreground">
+                      ({itinerary.items.length} {itinerary.items.length === 1 ? 'ponto' : 'pontos'})
+                    </span>
+                  )}
+                </div>
                 <Button variant="ghost" size="sm">
                   <Trash2 className="h-4 w-4 text-destructive" />
                 </Button>
               </CardTitle>
             </CardHeader>
+            {!isCollapsed && (
             <CardContent>
               {itinerary.items.length === 0 ? (
                 <div className="text-sm text-muted-foreground text-center py-4 border-2 border-dashed rounded-md">
@@ -331,8 +411,9 @@ export function ItineraryPlanner({ tripId, points, itineraries, onUpdate, onOpti
                 </Button>
               </div>
             </CardContent>
+            )}
           </Card>
-        ))}
+        )})}
       </div>
     </div>
   )
