@@ -2,14 +2,7 @@ import NextAuth from "next-auth"
 import Google from "next-auth/providers/google"
 import { FirestoreAdapter } from "@auth/firebase-adapter"
 import { firestore } from "@/lib/server/firebase"
-
-/** Lowercased emails allowed to sign in as owners (comma-separated env). */
-export function ownerEmails(): string[] {
-  return (process.env.OWNER_EMAILS || "")
-    .split(",")
-    .map((e) => e.trim().toLowerCase())
-    .filter(Boolean)
-}
+import { claimInvites, isAllowedEmail } from "@/lib/server/commands/members"
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: FirestoreAdapter(firestore),
@@ -21,13 +14,18 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   ],
   session: { strategy: "jwt" },
   pages: { signIn: "/login" },
+  events: {
+    // Turn pending invitations into memberships on every sign-in.
+    async signIn({ user }) {
+      if (user.id && user.email) await claimInvites(user.id, user.email)
+    },
+  },
   callbacks: {
-    // Allow-list: owners from env. F1.3 extends this with emails invited to a Trip.
-    // Fails closed when OWNER_EMAILS is unset.
+    // Allow-list (ADR-0007): owners from OWNER_EMAILS plus anyone invited to a Trip.
     async signIn({ profile }) {
       const email = profile?.email?.toLowerCase()
       if (!email || profile?.email_verified !== true) return false
-      return ownerEmails().includes(email)
+      return isAllowedEmail(email)
     },
     async session({ session, token }) {
       if (session.user && token.sub) session.user.id = token.sub

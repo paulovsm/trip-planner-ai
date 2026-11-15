@@ -31,6 +31,8 @@ export default defineConfig({
           name: "integration",
           environment: "node",
           include: ["tests/integration/**/*.test.ts"],
+          setupFiles: ["tests/integration/setup.ts"],
+          testTimeout: 20_000,
           // Integration tests share one Firestore emulator; run files serially.
           fileParallelism: false,
         },
