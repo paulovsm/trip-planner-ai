@@ -28,20 +28,6 @@ export default function LoginPage() {
           >
             Continuar com Google
           </Button>
-          <Button 
-            variant="outline" 
-            className="w-full" 
-            onClick={() => signIn("facebook", { callbackUrl: "/trips" })}
-          >
-            Continuar com Facebook
-          </Button>
-          <Button 
-            variant="outline" 
-            className="w-full" 
-            onClick={() => signIn("apple", { callbackUrl: "/trips" })}
-          >
-            Continuar com Apple
-          </Button>
         </CardContent>
       </Card>
     </div>

@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
-import { firestore } from "@/lib/firebase"
-import * as admin from 'firebase-admin';
+import { auth } from "@/auth"
+import { firestore } from "@/lib/server/firebase"
+import { FieldValue } from "firebase-admin/firestore"
 
 import { nanoid } from 'nanoid'
 
@@ -12,7 +11,7 @@ export async function POST(
 ) {
   const params = await props.params;
   try {
-    const session = await getServerSession(authOptions)
+    const session = await auth()
 
     if (!session?.user?.email) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
@@ -50,7 +49,7 @@ export async function POST(
 
     // Update the document
     await itineraryRef.update({
-      items: admin.firestore.FieldValue.arrayUnion(newItem)
+      items: FieldValue.arrayUnion(newItem)
     });
 
     // Fetch point details to return

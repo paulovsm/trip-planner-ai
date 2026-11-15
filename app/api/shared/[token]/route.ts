@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { firestore } from "@/lib/firebase";
+import { firestore } from "@/lib/server/firebase";
 
 export async function GET(
   req: NextRequest,
