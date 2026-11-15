@@ -11,10 +11,11 @@ import {
   Music,
   Beer,
   Castle,
-  Ticket
+  Ticket,
+  type LucideIcon,
 } from "lucide-react";
 
-export const CATEGORY_CONFIG: Record<string, { color: string; icon: any; label: string }> = {
+export const CATEGORY_CONFIG: Record<string, { color: string; icon: LucideIcon; label: string }> = {
   // Hospedagem
   "hospedagem": { color: "#F43F5E", icon: Hotel, label: "Hospedagem" }, // Rose
   "hotel": { color: "#F43F5E", icon: Hotel, label: "Hotel" },

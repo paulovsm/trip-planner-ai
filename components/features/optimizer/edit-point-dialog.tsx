@@ -1,119 +1,64 @@
 "use client"
 
 import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
 import { Pencil } from "lucide-react"
 import { toast } from "sonner"
-
-interface Point {
-  id: string
-  name: string
-  description: string | null
-  category: string | null
-  address: string | null
-  city?: string | null
-  latitude: number
-  longitude: number
-}
+import { Button } from "@/components/ui/button"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { api, errorMessage } from "@/lib/client/api"
+import type { LegacyPoint } from "@/lib/client/legacy-view"
+import { geocodePlace, PlaceFormFields, toPlaceInput, type PlaceFormData } from "./place-form-fields"
 
 interface EditPointDialogProps {
   tripId: string
-  point: Point
-  onSuccess: () => void
+  point: LegacyPoint
+  onSuccess: () => Promise<void> | void
 }
+
+const fromPoint = (p: LegacyPoint): PlaceFormData => ({
+  name: p.name,
+  city: p.city ?? "",
+  category: p.categoryKey,
+  address: p.address ?? "",
+  description: p.description ?? "",
+})
 
 export function EditPointDialog({ tripId, point, onSuccess }: EditPointDialogProps) {
   const [open, setOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [formData, setFormData] = useState({
-    name: point.name,
-    description: point.description || "",
-    category: point.category || "",
-    address: point.address || "",
-    city: point.city || "",
-  })
+  const [form, setForm] = useState<PlaceFormData>(() => fromPoint(point))
 
   // Reset form data from the latest point whenever the dialog opens
   const handleOpenChange = (next: boolean) => {
-    if (next) {
-      setFormData({
-        name: point.name,
-        description: point.description || "",
-        category: point.category || "",
-        address: point.address || "",
-        city: point.city || "",
-      })
-    }
+    if (next) setForm(fromPoint(point))
     setOpen(next)
-  }
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target
-    setFormData((prev) => ({ ...prev, [name]: value }))
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!formData.name) return
-
+    if (!form.name.trim()) return
+    setIsSubmitting(true)
     try {
-      setIsSubmitting(true)
-      
-      let lat = point.latitude
-      let lng = point.longitude
-
-      // Re-geocode if address changed
-      const addressChanged = formData.address !== (point.address || "")
-      
-      if (addressChanged && typeof window !== 'undefined' && window.google && window.google.maps) {
-        const geocoder = new window.google.maps.Geocoder()
-        const addressToGeocode = formData.address || `${formData.name}, ${formData.city || ''}`
-        
-        try {
-          const result = await geocoder.geocode({ address: addressToGeocode })
-          if (result.results && result.results.length > 0) {
-            const location = result.results[0].geometry.location
-            lat = location.lat()
-            lng = location.lng()
-          }
-        } catch (geoError) {
-          console.error("Geocoding failed:", geoError)
-          toast.error("Erro ao geocodificar o endereço. Coordenadas não foram atualizadas.")
-        }
+      let location = { lat: point.latitude, lng: point.longitude }
+      if (form.address !== (point.address ?? "") || form.city !== (point.city ?? "")) {
+        const found = await geocodePlace(form)
+        if (found) location = found
+        else toast.warning("Endereço não encontrado no mapa; a localização foi mantida.")
       }
-
-      const response = await fetch(`/api/trips/${tripId}/points/${point.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: formData.name,
-          description: formData.description || null,
-          category: formData.category || null,
-          address: formData.address || null,
-          city: formData.city || null,
-          latitude: lat,
-          longitude: lng
-        }),
+      const input = toPlaceInput(form)
+      await api.places.update(tripId, point.id, {
+        ...input,
+        // Send empty strings so cleared optional fields are removed on the server.
+        city: input.city ?? "",
+        address: input.address ?? "",
+        description: input.description ?? "",
+        location,
       })
-
-      if (!response.ok) throw new Error("Failed to update point")
-
       toast.success("Ponto de interesse atualizado!")
       setOpen(false)
-      onSuccess()
+      await onSuccess()
     } catch (error) {
-      toast.error("Erro ao atualizar ponto.")
-      console.error(error)
+      toast.error(errorMessage(error, "Erro ao atualizar ponto."))
     } finally {
       setIsSubmitting(false)
     }
@@ -128,6 +73,7 @@ export function EditPointDialog({ tripId, point, onSuccess }: EditPointDialogPro
           className="h-6 w-6 text-muted-foreground hover:text-primary"
           onClick={(e) => e.stopPropagation()}
           title="Editar ponto"
+          aria-label="Editar ponto"
         >
           <Pencil className="h-4 w-4" />
         </Button>
@@ -137,60 +83,11 @@ export function EditPointDialog({ tripId, point, onSuccess }: EditPointDialogPro
           <DialogTitle>Editar Ponto</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 py-4">
-          <div className="space-y-2">
-            <Label htmlFor="name">Nome *</Label>
-            <Input
-              id="name"
-              name="name"
-              value={formData.name}
-              onChange={handleChange}
-              placeholder="Ex: Torre Eiffel"
-              required
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="city">Cidade</Label>
-            <Input
-              id="city"
-              name="city"
-              value={formData.city}
-              onChange={handleChange}
-              placeholder="Ex: Paris"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="category">Categoria</Label>
-            <Input
-              id="category"
-              name="category"
-              value={formData.category}
-              onChange={handleChange}
-              placeholder="Ex: Monumento, Restaurante"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="address">Endereço</Label>
-            <Input
-              id="address"
-              name="address"
-              value={formData.address}
-              onChange={handleChange}
-              placeholder="Endereço completo"
-            />
-            <p className="text-xs text-muted-foreground">
-              Alterar o endereço irá atualizar a localização no mapa.
-            </p>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="description">Descrição</Label>
-            <Textarea
-              id="description"
-              name="description"
-              value={formData.description}
-              onChange={handleChange}
-              placeholder="Breve descrição do local"
-            />
-          </div>
+          <PlaceFormFields
+            value={form}
+            onChange={setForm}
+            addressHint="Alterar o endereço ou a cidade atualiza a localização no mapa."
+          />
           <Button type="submit" disabled={isSubmitting} className="w-full">
             {isSubmitting ? "Salvando..." : "Salvar Alterações"}
           </Button>

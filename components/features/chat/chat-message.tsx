@@ -9,7 +9,17 @@ import { Button } from "@/components/ui/button";
 interface ChatMessageProps {
   role: "user" | "model";
   content: string;
+  sources?: { title?: string; uri?: string }[];
 }
+
+// Model output may echo injected content: never load remote images (data
+// exfiltration) and only allow https links, opened without referrer.
+const safeUrl = (url: string) => (/^https:\/\//i.test(url) ? url : "");
+const markdownComponents = {
+  a: ({ href, children }: { href?: string; children?: React.ReactNode }) => (
+    <a href={href} target="_blank" rel="noopener noreferrer nofollow">{children}</a>
+  ),
+};
 
 const markdownStyles = [
   "prose prose-sm dark:prose-invert max-w-none",
@@ -19,7 +29,7 @@ const markdownStyles = [
   "prose-code:text-xs prose-code:bg-background/50 prose-code:px-1 prose-code:py-0.5 prose-code:rounded",
 ].join(" ");
 
-export function ChatMessage({ role, content }: ChatMessageProps) {
+export function ChatMessage({ role, content, sources }: ChatMessageProps) {
   const isUser = role === "user";
   const [copied, setCopied] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -39,7 +49,7 @@ export function ChatMessage({ role, content }: ChatMessageProps) {
       await navigator.clipboard.write([clipboardItem]);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    } catch (err) {
+    } catch {
       // Fallback to plain text if ClipboardItem is not supported
       try {
         await navigator.clipboard.writeText(content);
@@ -68,14 +78,27 @@ export function ChatMessage({ role, content }: ChatMessageProps) {
         ) : (
           <>
             <div ref={contentRef} className={markdownStyles}>
-              <ReactMarkdown>{content}</ReactMarkdown>
+              <ReactMarkdown skipHtml disallowedElements={["img"]} urlTransform={safeUrl} components={markdownComponents}>
+                {content}
+              </ReactMarkdown>
             </div>
+            {sources && sources.length > 0 && (
+              <div className="mt-2 border-t pt-2 text-xs text-muted-foreground">
+                <span className="font-medium">Fontes: </span>
+                {sources.filter((s) => s.uri && safeUrl(s.uri)).slice(0, 5).map((s, i) => (
+                  <a key={i} href={s.uri} target="_blank" rel="noopener noreferrer nofollow" className="underline mr-2">
+                    {s.title || new URL(s.uri!).hostname}
+                  </a>
+                ))}
+              </div>
+            )}
             <Button
               variant="ghost"
               size="icon"
               className="absolute top-1 right-1 h-6 w-6 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
               onClick={handleCopy}
               title={copied ? "Copiado!" : "Copiar resposta"}
+              aria-label="Copiar resposta"
             >
               {copied ? (
                 <Check className="h-3 w-3 text-green-600" />

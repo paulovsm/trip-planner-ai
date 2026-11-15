@@ -3,7 +3,7 @@ import { createHash } from "node:crypto"
 import { DomainError } from "@/lib/domain/errors"
 import { firestore } from "./firebase"
 
-export type RateLimitBucket = "ai-chat" | "ai-proposal-apply" | "import" | "share-public" | "maps-routes" | "default-write"
+export type RateLimitBucket = "ai-chat" | "ai-proposal-apply" | "import" | "share-public" | "maps-routes"
 
 export const RATE_LIMITS: Record<RateLimitBucket, number> = {
   "ai-chat": 10,
@@ -11,7 +11,6 @@ export const RATE_LIMITS: Record<RateLimitBucket, number> = {
   import: 3,
   "share-public": 60,
   "maps-routes": 20,
-  "default-write": 120,
 }
 
 /** Salted hash so raw IPs are never stored. */

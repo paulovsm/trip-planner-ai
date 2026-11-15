@@ -1,6 +1,6 @@
 "use client"
 
-import { GoogleMap, useJsApiLoader, Marker, InfoWindow, DirectionsRenderer, OverlayView } from "@react-google-maps/api"
+import { GoogleMap, Marker, InfoWindow, DirectionsRenderer, OverlayView } from "@react-google-maps/api"
 import { useState, useCallback, useEffect } from "react"
 import { Loader2, AlertTriangle, ExternalLink, Crosshair, CheckCircle2 } from "lucide-react"
 import { getCategoryConfig } from "@/lib/constants"

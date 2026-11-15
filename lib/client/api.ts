@@ -1,0 +1,117 @@
+import type { ChatMessageView, CreatedShareLink, MemberView, ShareLinkView, TripDetail, TripSummary } from "@/lib/domain/dto"
+export type { ChatMessageView }
+import type { ImportResult } from "@/lib/domain/import"
+import type {
+  AddStopInput,
+  CreateDayInput,
+  CreatePlaceInput,
+  CreateTripInput,
+  Day,
+  Place,
+  Trip,
+  UpdateDayInput,
+  UpdatePlaceInput,
+  UpdateStopInput,
+  UpdateTripInput,
+} from "@/lib/domain/schemas"
+
+/** Error thrown for non-2xx API responses, carrying the server's pt-BR message. */
+export class ApiError extends Error {
+  constructor(
+    readonly status: number,
+    readonly code: string,
+    message: string,
+    readonly details?: unknown,
+  ) {
+    super(message)
+    this.name = "ApiError"
+  }
+}
+
+async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
+  const isForm = typeof FormData !== "undefined" && body instanceof FormData
+  const res = await fetch(path, {
+    method,
+    headers: body && !isForm ? { "Content-Type": "application/json" } : undefined,
+    body: body === undefined ? undefined : isForm ? body : JSON.stringify(body),
+  })
+  if (res.status === 204) return undefined as T
+  const data = await res.json().catch(() => null)
+  if (!res.ok) {
+    const err = data?.error ?? {}
+    throw new ApiError(res.status, err.code ?? "UNKNOWN", err.message ?? "Erro inesperado. Tente novamente.", err.details)
+  }
+  return data as T
+}
+
+const t = (tripId: string) => `/api/trips/${encodeURIComponent(tripId)}`
+const d = (tripId: string, dayId: string) => `${t(tripId)}/days/${encodeURIComponent(dayId)}`
+
+export type CommitImportInput = { places: CreatePlaceInput[]; days: { date: string; placeIndexes: number[] }[] }
+
+export const api = {
+  trips: {
+    list: () => request<TripSummary[]>("GET", "/api/trips"),
+    create: (input: CreateTripInput) => request<Trip>("POST", "/api/trips", input),
+    get: (tripId: string) => request<TripDetail>("GET", t(tripId)),
+    update: (tripId: string, input: UpdateTripInput) => request<void>("PATCH", t(tripId), input),
+    remove: (tripId: string) => request<void>("DELETE", t(tripId)),
+  },
+  members: {
+    invite: (tripId: string, email: string) => request<MemberView[]>("POST", `${t(tripId)}/members`, { email }),
+    remove: (tripId: string, email: string) =>
+      request<MemberView[]>("DELETE", `${t(tripId)}/members/${encodeURIComponent(email)}`),
+  },
+  places: {
+    create: (tripId: string, input: CreatePlaceInput) => request<Place>("POST", `${t(tripId)}/places`, input),
+    update: (tripId: string, placeId: string, input: UpdatePlaceInput) =>
+      request<Place>("PATCH", `${t(tripId)}/places/${encodeURIComponent(placeId)}`, input),
+    remove: (tripId: string, placeId: string) =>
+      request<void>("DELETE", `${t(tripId)}/places/${encodeURIComponent(placeId)}`),
+  },
+  days: {
+    create: (tripId: string, input: CreateDayInput) => request<Day>("POST", `${t(tripId)}/days`, input),
+    update: (tripId: string, dayId: string, input: UpdateDayInput) => request<Day>("PATCH", d(tripId, dayId), input),
+    remove: (tripId: string, dayId: string) => request<void>("DELETE", d(tripId, dayId)),
+    addStop: (tripId: string, dayId: string, input: AddStopInput) =>
+      request<Day>("POST", `${d(tripId, dayId)}/stops`, input),
+    updateStop: (tripId: string, dayId: string, stopId: string, input: UpdateStopInput) =>
+      request<Day[]>("PATCH", `${d(tripId, dayId)}/stops/${encodeURIComponent(stopId)}`, input),
+    removeStop: (tripId: string, dayId: string, stopId: string) =>
+      request<Day>("DELETE", `${d(tripId, dayId)}/stops/${encodeURIComponent(stopId)}`),
+    reorder: (tripId: string, dayId: string, stopIds: string[], expectedVersion: number) =>
+      request<Day>("PUT", `${d(tripId, dayId)}/order`, { stopIds, expectedVersion }),
+  },
+  shareLinks: {
+    list: (tripId: string) => request<ShareLinkView[]>("GET", `${t(tripId)}/share-links`),
+    create: (tripId: string, expiresInDays = 30) =>
+      request<CreatedShareLink>("POST", `${t(tripId)}/share-links`, { expiresInDays }),
+    revoke: (tripId: string, linkId: string) =>
+      request<void>("DELETE", `${t(tripId)}/share-links/${encodeURIComponent(linkId)}`),
+  },
+  chat: {
+    history: (tripId: string) => request<ChatMessageView[]>("GET", `${t(tripId)}/chat`),
+    send: (tripId: string, message: string) => request<ChatMessageView>("POST", `${t(tripId)}/chat`, { message }),
+    clear: (tripId: string) => request<void>("DELETE", `${t(tripId)}/chat`),
+  },
+  import: {
+    extract: (file: File) => {
+      const form = new FormData()
+      form.append("file", file)
+      return request<ImportResult>("POST", "/api/import", form)
+    },
+    commit: (tripId: string, input: CommitImportInput) =>
+      request<{ placeIds: string[]; dayIds: string[] }>("POST", `${t(tripId)}/import/commit`, input),
+  },
+}
+
+export const queryKeys = {
+  trips: ["trips"] as const,
+  trip: (tripId: string) => ["trip", tripId] as const,
+  chat: (tripId: string) => ["chat", tripId] as const,
+  shareLinks: (tripId: string) => ["share-links", tripId] as const,
+}
+
+/** User-facing message for any thrown error. */
+export const errorMessage = (err: unknown, fallback = "Algo deu errado. Tente novamente.") =>
+  err instanceof ApiError ? err.message : fallback

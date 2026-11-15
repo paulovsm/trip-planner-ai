@@ -51,6 +51,13 @@ export async function updatePlace(
 
     const next: Place = { ...current, ...stripUndefined(input), updatedAt: now }
     const update: Record<string, unknown> = { ...toFirestore(stripUndefined(input)), updatedAt: now }
+    // An empty string clears an optional text field.
+    for (const key of ["description", "address", "city", "googlePlaceId"] as const) {
+      if (input[key] === "") {
+        update[key] = FieldValue.delete()
+        delete next[key]
+      }
+    }
     if (input.visited !== undefined && input.visited !== current.visited) {
       if (input.visited) {
         Object.assign(update, { visitedAt: now, visitedBy: user.id })

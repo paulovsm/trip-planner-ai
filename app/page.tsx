@@ -1,7 +1,7 @@
 import { Navbar } from "@/components/navbar";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { MapPin, Calendar, Sparkles, Upload, ArrowRight, CheckCircle2, Globe2 } from "lucide-react";
+import { MapPin, Calendar, Sparkles, Upload, ArrowRight, Globe2 } from "lucide-react";
 
 export default function Home() {
   return (

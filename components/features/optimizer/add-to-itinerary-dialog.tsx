@@ -18,7 +18,8 @@ import {
 } from "@/components/ui/select"
 import { CalendarPlus } from "lucide-react"
 import { toast } from "sonner"
-import { format } from "date-fns"
+import { format, parseISO } from "date-fns"
+import { api, errorMessage } from "@/lib/client/api"
 import { ptBR } from "date-fns/locale"
 
 interface Itinerary {
@@ -30,7 +31,7 @@ interface AddToItineraryDialogProps {
   tripId: string
   pointId: string
   itineraries: Itinerary[]
-  onSuccess: () => void
+  onSuccess: () => Promise<void> | void
 }
 
 export function AddToItineraryDialog({ tripId, pointId, itineraries, onSuccess }: AddToItineraryDialogProps) {
@@ -43,21 +44,13 @@ export function AddToItineraryDialog({ tripId, pointId, itineraries, onSuccess }
 
     try {
       setIsSubmitting(true)
-      const response = await fetch(`/api/itineraries/${selectedItineraryId}/items`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pointId, tripId }),
-      })
-
-      if (!response.ok) throw new Error("Failed to add point")
-
+      await api.days.addStop(tripId, selectedItineraryId, { placeId: pointId })
       toast.success("Ponto adicionado ao roteiro!")
       setOpen(false)
       setSelectedItineraryId("")
-      onSuccess()
+      await onSuccess()
     } catch (error) {
-      toast.error("Erro ao adicionar ponto.")
-      console.error(error)
+      toast.error(errorMessage(error, "Erro ao adicionar ponto."))
     } finally {
       setIsSubmitting(false)
     }
@@ -91,7 +84,7 @@ export function AddToItineraryDialog({ tripId, pointId, itineraries, onSuccess }
               ) : (
                 itineraries.map((itinerary) => (
                   <SelectItem key={itinerary.id} value={itinerary.id}>
-                    {format(new Date(itinerary.date), "dd 'de' MMMM", { locale: ptBR })}
+                    {format(parseISO(itinerary.date), "dd 'de' MMMM", { locale: ptBR })}
                   </SelectItem>
                 ))
               )}

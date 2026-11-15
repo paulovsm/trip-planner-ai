@@ -6,30 +6,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Plus, MapPin, Calendar, Trash2 } from "lucide-react"
 import Link from "next/link"
 import { useQuery } from "@tanstack/react-query"
-import { format } from "date-fns"
+import { format, parseISO } from "date-fns"
 import { ptBR } from "date-fns/locale"
 import { toast } from "sonner"
-
-interface Trip {
-  id: string
-  name: string
-  description: string | null
-  startDate: string | null
-  endDate: string | null
-  updatedAt: string
-  _count: {
-    points: number
-  }
-}
+import { api, errorMessage, queryKeys } from "@/lib/client/api"
 
 export default function TripsPage() {
-  const { data: trips, isLoading, refetch } = useQuery<Trip[]>({
-    queryKey: ["trips"],
-    queryFn: async () => {
-      const res = await fetch("/api/trips")
-      if (!res.ok) throw new Error("Failed to fetch trips")
-      return res.json()
-    },
+  const { data: trips, isLoading, isError, error, refetch } = useQuery({
+    queryKey: queryKeys.trips,
+    queryFn: api.trips.list,
   })
 
   const handleDeleteTrip = async (tripId: string, e: React.MouseEvent) => {
@@ -39,17 +24,11 @@ export default function TripsPage() {
     if (!confirm("Tem certeza que deseja excluir esta viagem? Esta ação não pode ser desfeita.")) return
 
     try {
-      const response = await fetch(`/api/trips/${tripId}`, {
-        method: "DELETE",
-      })
-
-      if (!response.ok) throw new Error("Failed to delete trip")
-
+      await api.trips.remove(tripId)
       toast.success("Viagem excluída com sucesso!")
-      refetch()
+      await refetch()
     } catch (error) {
-      toast.error("Erro ao excluir viagem.")
-      console.error(error)
+      toast.error(errorMessage(error, "Erro ao excluir viagem."))
     }
   }
 
@@ -76,6 +55,11 @@ export default function TripsPage() {
               </Card>
             ))}
           </div>
+        ) : isError ? (
+          <div className="text-center p-12 border-2 border-dashed rounded-lg space-y-4">
+            <p className="font-medium">{errorMessage(error, "Não foi possível carregar suas viagens.")}</p>
+            <Button variant="outline" onClick={() => refetch()}>Tentar novamente</Button>
+          </div>
         ) : trips?.length === 0 ? (
           <div className="text-center p-12 border-2 border-dashed rounded-lg">
             <div className="flex justify-center mb-4">
@@ -96,32 +80,33 @@ export default function TripsPage() {
             {trips?.map((trip) => (
               <Link key={trip.id} href={`/trips/${trip.id}`}>
                 <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full group relative">
-                  <div className="absolute top-2 right-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity z-10">
+                  {trip.role === "owner" && <div className="absolute top-2 right-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 md:focus-within:opacity-100 transition-opacity z-10">
                     <Button
                       variant="destructive"
                       size="icon"
                       className="h-8 w-8 shadow-sm"
                       onClick={(e) => handleDeleteTrip(trip.id, e)}
+                      aria-label={`Excluir viagem ${trip.name}`}
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
-                  </div>
+                  </div>}
                   <CardHeader>
                     <CardTitle className="truncate pr-8">{trip.name}</CardTitle>
                     <CardDescription>
-                      Atualizado em {format(new Date(trip.updatedAt), "d 'de' MMMM, yyyy", { locale: ptBR })}
+                      Atualizado em {format(parseISO(trip.updatedAt), "d 'de' MMMM, yyyy", { locale: ptBR })}
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="flex items-center gap-4 text-sm text-muted-foreground">
                       <div className="flex items-center gap-1">
                         <MapPin className="h-4 w-4" />
-                        {trip._count.points} pontos
+                        {trip.placeCount} {trip.placeCount === 1 ? "ponto" : "pontos"}
                       </div>
                       {trip.startDate && (
                         <div className="flex items-center gap-1">
                           <Calendar className="h-4 w-4" />
-                          {format(new Date(trip.startDate), "dd/MM/yyyy")}
+                          {format(parseISO(trip.startDate), "dd/MM/yyyy")}
                         </div>
                       )}
                     </div>

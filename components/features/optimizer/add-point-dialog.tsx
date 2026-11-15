@@ -19,6 +19,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Plus, Search } from "lucide-react"
 import { toast } from "sonner"
+import { api, errorMessage } from "@/lib/client/api"
 
 interface Point {
   id: string
@@ -30,7 +31,7 @@ interface AddPointToItineraryDialogProps {
   itineraryId: string
   tripId: string
   points: Point[]
-  onSuccess: () => void
+  onSuccess: () => Promise<void> | void
 }
 
 export function AddPointToItineraryDialog({ itineraryId, tripId, points, onSuccess }: AddPointToItineraryDialogProps) {
@@ -58,23 +59,15 @@ export function AddPointToItineraryDialog({ itineraryId, tripId, points, onSucce
 
     try {
       setIsSubmitting(true)
-      const response = await fetch(`/api/itineraries/${itineraryId}/items`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pointId: selectedPointId, tripId }),
-      })
-
-      if (!response.ok) throw new Error("Failed to add point")
-
+      await api.days.addStop(tripId, itineraryId, { placeId: selectedPointId })
       toast.success("Ponto adicionado ao roteiro!")
       setOpen(false)
       setSelectedPointId("")
       setSearchTerm("")
       setSelectedCity("all")
-      onSuccess()
+      await onSuccess()
     } catch (error) {
-      toast.error("Erro ao adicionar ponto.")
-      console.error(error)
+      toast.error(errorMessage(error, "Erro ao adicionar ponto."))
     } finally {
       setIsSubmitting(false)
     }

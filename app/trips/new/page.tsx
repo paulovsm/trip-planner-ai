@@ -1,189 +1,154 @@
 "use client"
 
-import { useState, useCallback } from "react"
-import { DocumentImporter } from "@/components/features/importer/document-importer"
-import { Navbar } from "@/components/navbar"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Plus, Trash2, Save, MapPin, Loader2, Calendar as CalendarIcon } from "lucide-react"
-import { toast } from "sonner"
+import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { useJsApiLoader } from "@react-google-maps/api"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Calendar } from "@/components/ui/calendar"
 import { format } from "date-fns"
 import { ptBR } from "date-fns/locale"
+import { Calendar as CalendarIcon, Loader2, MapPin, Save, Trash2 } from "lucide-react"
+import { toast } from "sonner"
+import { DocumentImporter } from "@/components/features/importer/document-importer"
+import { Navbar } from "@/components/navbar"
+import { Button } from "@/components/ui/button"
+import { Calendar } from "@/components/ui/calendar"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Textarea } from "@/components/ui/textarea"
+import { api, errorMessage } from "@/lib/client/api"
+import { buildImportCommit, type DraftPlace } from "@/lib/client/import-plan"
+import { CATEGORY_LABELS, PLACE_CATEGORIES, type PlaceCategory } from "@/lib/domain/categories"
+import type { ImportedDay, ImportResult } from "@/lib/domain/import"
 import { cn } from "@/lib/utils"
 
-interface POI {
-  name: string
-  description: string
-  category: string
-  address: string
-  city?: string
-  latitude?: number
-  longitude?: number
+const libraries: "places"[] = ["places"]
+
+type Draft = DraftPlace & { key: string }
+
+/** Client-side geocoding; replaced by server-side Places resolution in F4. */
+async function locate(geocoder: google.maps.Geocoder, p: DraftPlace) {
+  const queries = [
+    p.city && `${p.name}, ${p.city}`,
+    p.address && `${p.name}, ${p.address}`,
+    p.address,
+    p.name,
+  ].filter(Boolean) as string[]
+  for (const address of queries) {
+    try {
+      const { results } = await geocoder.geocode({ address })
+      const loc = results?.[0]?.geometry.location
+      if (loc) return { lat: loc.lat(), lng: loc.lng() }
+    } catch {
+      // try the next query
+    }
+  }
+  return undefined
 }
 
-interface ImportedItinerary {
-  day: number
-  date?: string
-  items: string[] // POI names
+function DateField({ label, value, onChange }: { label: string; value?: Date; onChange: (d?: Date) => void }) {
+  return (
+    <div className="space-y-2 flex flex-col">
+      <Label>{label}</Label>
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !value && "text-muted-foreground")}>
+            <CalendarIcon className="mr-2 h-4 w-4 shrink-0" />
+            {value ? format(value, "dd/MM/yyyy") : <span>Selecione</span>}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-0" align="start">
+          <Calendar mode="single" selected={value} onSelect={onChange} locale={ptBR} initialFocus />
+        </PopoverContent>
+      </Popover>
+    </div>
+  )
 }
-
-const libraries: ("places" | "geometry" | "drawing" | "visualization")[] = ["places"]
 
 export default function NewTripPage() {
-  const [pois, setPois] = useState<POI[]>([])
-  const [importedItineraries, setImportedItineraries] = useState<ImportedItinerary[]>([])
+  const router = useRouter()
+  const [places, setPlaces] = useState<Draft[]>([])
+  const [importedDays, setImportedDays] = useState<ImportedDay[]>([])
   const [tripName, setTripName] = useState("")
   const [startDate, setStartDate] = useState<Date>()
   const [endDate, setEndDate] = useState<Date>()
   const [isGeocoding, setIsGeocoding] = useState(false)
-  const router = useRouter()
+  const [isSaving, setIsSaving] = useState(false)
 
   const { isLoaded } = useJsApiLoader({
-    id: 'google-map-script',
+    id: "google-map-script",
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "",
     libraries,
   })
 
-  const geocodeClientSide = useCallback((geocoder: google.maps.Geocoder, address: string): Promise<{lat: number, lng: number} | null> => {
-    return new Promise((resolve) => {
-      geocoder.geocode({ address }, (results, status) => {
-        if (status === "OK" && results && results[0]) {
-          resolve({
-            lat: results[0].geometry.location.lat(),
-            lng: results[0].geometry.location.lng()
-          })
-        } else {
-          console.warn(`Geocoding failed for ${address}: ${status}`)
-          resolve(null)
-        }
-      })
-    })
-  }, [])
-
-  const handleImport = async (data: { pois: POI[], itineraries?: ImportedItinerary[] }) => {
+  const handleImport = async (data: ImportResult) => {
+    const drafts: Draft[] = data.places.map((p) => ({ ...p, key: crypto.randomUUID() }))
+    setImportedDays((prev) => [...prev, ...data.days])
     if (!isLoaded) {
-      toast.error("Google Maps API ainda não carregou. Tente novamente em instantes.")
-      setPois((prev) => [...prev, ...data.pois])
-      if (data.itineraries) setImportedItineraries(data.itineraries)
+      toast.warning("O mapa ainda não carregou; os lugares ficarão sem localização.")
+      setPlaces((prev) => [...prev, ...drafts])
       return
     }
-
     setIsGeocoding(true)
-    const geocoder = new google.maps.Geocoder()
-    
     try {
-      const poisWithCoords = await Promise.all(data.pois.map(async (poi) => {
-        // If already has coords, skip
-        if (poi.latitude && poi.longitude) return poi
-
-        let coords = null
-        
-        // Try name + city (Most accurate for tourist spots)
-        if (poi.name && poi.city) {
-           coords = await geocodeClientSide(geocoder, `${poi.name}, ${poi.city}`)
-        }
-
-        // If failed, try name + address
-        if (!coords && poi.name && poi.address) {
-           coords = await geocodeClientSide(geocoder, `${poi.name}, ${poi.address}`)
-        }
-
-        // If failed, try address only
-        if (!coords && poi.address) {
-          coords = await geocodeClientSide(geocoder, poi.address)
-        }
-
-        // If still failed, try just name
-        if (!coords && poi.name) {
-          coords = await geocodeClientSide(geocoder, poi.name)
-        }
-
-        if (coords) {
-          return { ...poi, latitude: coords.lat, longitude: coords.lng }
-        }
-        
-        return poi
-      }))
-
-      setPois((prev) => [...prev, ...poisWithCoords])
-      if (data.itineraries) setImportedItineraries(data.itineraries)
-      toast.success(`${poisWithCoords.length} pontos importados e geocodificados!`)
-    } catch (error) {
-      console.error("Error during client-side geocoding", error)
-      toast.error("Erro ao geocodificar alguns pontos.")
-      setPois((prev) => [...prev, ...data.pois])
-      if (data.itineraries) setImportedItineraries(data.itineraries)
+      const geocoder = new google.maps.Geocoder()
+      const located = await Promise.all(drafts.map(async (p) => ({ ...p, location: await locate(geocoder, p) })))
+      setPlaces((prev) => [...prev, ...located])
+      const missing = located.filter((p) => !p.location).length
+      if (missing) toast.warning(`${missing} lugar(es) não foram encontrados no mapa e não serão salvos.`)
     } finally {
       setIsGeocoding(false)
     }
   }
 
-  const handleRemovePoi = (index: number) => {
-    setPois((prev) => prev.filter((_, i) => i !== index))
-  }
+  const update = (key: string, patch: Partial<Draft>) =>
+    setPlaces((prev) => prev.map((p) => (p.key === key ? { ...p, ...patch } : p)))
 
-  const handleUpdatePoi = (index: number, field: keyof POI, value: string) => {
-    setPois((prev) => {
-      const newPois = [...prev]
-      newPois[index] = { ...newPois[index], [field]: value }
-      return newPois
-    })
-  }
-
-  const handleSaveTrip = async () => {
-    if (!tripName) {
+  const handleSave = async () => {
+    if (!tripName.trim()) {
       toast.error("Por favor, dê um nome para a viagem.")
       return
     }
-
-    if (pois.length === 0) {
-      toast.error("Adicione pelo menos um ponto de interesse.")
+    if (startDate && endDate && endDate < startDate) {
+      toast.error("A data de término deve ser igual ou posterior à de início.")
       return
     }
-
+    setIsSaving(true)
     try {
-      const response = await fetch("/api/trips", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          name: tripName,
-          startDate: startDate?.toISOString(),
-          endDate: endDate?.toISOString(),
-          points: pois,
-          importedItineraries: importedItineraries.length > 0 ? importedItineraries : undefined
-        }),
+      const start = startDate ? format(startDate, "yyyy-MM-dd") : undefined
+      const trip = await api.trips.create({
+        name: tripName.trim(),
+        startDate: start,
+        endDate: endDate ? format(endDate, "yyyy-MM-dd") : undefined,
       })
-
-      if (!response.ok) {
-        throw new Error("Falha ao salvar viagem")
-      }
-
-      const data = await response.json()
+      const drafts: DraftPlace[] = places.map(({ name, category, description, address, city, location }) => ({
+        name,
+        category,
+        description: description || undefined,
+        address: address || undefined,
+        city: city || undefined,
+        location,
+      }))
+      const { commit, skippedPlaces, skippedDays } = buildImportCommit(drafts, importedDays, start)
+      if (commit.places.length || commit.days.length) await api.import.commit(trip.id, commit)
+      if (skippedPlaces) toast.warning(`${skippedPlaces} lugar(es) sem localização não foram salvos.`)
+      if (skippedDays) toast.warning(`${skippedDays} dia(s) sem data foram ignorados. Defina a data de início para incluí-los.`)
       toast.success("Viagem criada com sucesso!")
-      router.push(`/trips/${data.id}`)
+      router.push(`/trips/${trip.id}`)
     } catch (error) {
-      toast.error("Erro ao salvar viagem.")
-      console.error(error)
+      toast.error(errorMessage(error, "Erro ao salvar viagem."))
+      setIsSaving(false)
     }
   }
 
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
-      <main className="flex-1 container mx-auto p-8">
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold">Nova Viagem</h1>
-          <Button onClick={handleSaveTrip}>
-            <Save className="mr-2 h-4 w-4" />
+      <main className="flex-1 container mx-auto p-4 md:p-8">
+        <div className="flex flex-wrap justify-between items-center gap-4 mb-8">
+          <h1 className="text-2xl md:text-3xl font-bold">Nova Viagem</h1>
+          <Button onClick={handleSave} disabled={isSaving || isGeocoding}>
+            {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
             Salvar Viagem
           </Button>
         </div>
@@ -201,62 +166,13 @@ export default function NewTripPage() {
                     id="tripName"
                     placeholder="Ex: Férias na Europa 2026"
                     value={tripName}
+                    maxLength={120}
                     onChange={(e) => setTripName(e.target.value)}
                   />
                 </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2 flex flex-col">
-                    <Label>Data de Início</Label>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant={"outline"}
-                          className={cn(
-                            "w-full justify-start text-left font-normal",
-                            !startDate && "text-muted-foreground"
-                          )}
-                        >
-                          <CalendarIcon className="mr-2 h-4 w-4 shrink-0" />
-                          {startDate ? format(startDate, "dd/MM/yyyy") : <span>Selecione</span>}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={startDate}
-                          onSelect={setStartDate}
-                          initialFocus
-                        />
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-
-                  <div className="space-y-2 flex flex-col">
-                    <Label>Data de Término</Label>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant={"outline"}
-                          className={cn(
-                            "w-full justify-start text-left font-normal",
-                            !endDate && "text-muted-foreground"
-                          )}
-                        >
-                          <CalendarIcon className="mr-2 h-4 w-4 shrink-0" />
-                          {endDate ? format(endDate, "dd/MM/yyyy") : <span>Selecione</span>}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={endDate}
-                          onSelect={setEndDate}
-                          initialFocus
-                        />
-                      </PopoverContent>
-                    </Popover>
-                  </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <DateField label="Data de Início" value={startDate} onChange={setStartDate} />
+                  <DateField label="Data de Término" value={endDate} onChange={setEndDate} />
                 </div>
               </CardContent>
             </Card>
@@ -266,60 +182,67 @@ export default function NewTripPage() {
 
           <div className="lg:col-span-2 space-y-6">
             <div className="flex items-center gap-2">
-              <h2 className="text-xl font-semibold">Pontos de Interesse ({pois.length})</h2>
-              {isGeocoding && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+              <h2 className="text-xl font-semibold">Pontos de Interesse ({places.length})</h2>
+              {isGeocoding && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" aria-label="Localizando" />}
             </div>
-            
-            {pois.length === 0 ? (
+
+            {places.length === 0 ? (
               <div className="text-center p-12 border-2 border-dashed rounded-lg text-muted-foreground">
-                Nenhum ponto adicionado. Importe um documento ou adicione manualmente.
+                Importe um documento para preencher a viagem, ou salve e adicione pontos depois.
               </div>
             ) : (
               <div className="space-y-4">
-                {pois.map((poi, index) => (
-                  <Card key={index}>
+                {places.map((p) => (
+                  <Card key={p.key}>
                     <CardContent className="p-4">
                       <div className="flex justify-between items-start gap-4">
                         <div className="flex-1 space-y-4">
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-2">
-                              <Label>Nome</Label>
-                              <Input
-                                value={poi.name}
-                                onChange={(e) => handleUpdatePoi(index, "name", e.target.value)}
-                              />
+                              <Label htmlFor={`${p.key}-name`}>Nome</Label>
+                              <Input id={`${p.key}-name`} value={p.name} onChange={(e) => update(p.key, { name: e.target.value })} />
                             </div>
                             <div className="space-y-2">
-                              <Label>Categoria</Label>
-                              <Input
-                                value={poi.category}
-                                onChange={(e) => handleUpdatePoi(index, "category", e.target.value)}
-                              />
+                              <Label htmlFor={`${p.key}-category`}>Categoria</Label>
+                              <select
+                                id={`${p.key}-category`}
+                                value={p.category}
+                                onChange={(e) => update(p.key, { category: e.target.value as PlaceCategory })}
+                                className="border-input bg-transparent dark:bg-input/30 h-9 w-full rounded-md border px-3 text-sm"
+                              >
+                                {PLACE_CATEGORIES.map((c) => (
+                                  <option key={c} value={c}>
+                                    {CATEGORY_LABELS[c]}
+                                  </option>
+                                ))}
+                              </select>
                             </div>
                           </div>
                           <div className="space-y-2">
-                            <Label>Endereço</Label>
-                            <div className="flex gap-2">
+                            <Label htmlFor={`${p.key}-address`}>Endereço</Label>
+                            <div className="flex gap-2 items-center">
                               <Input
-                                value={poi.address}
-                                onChange={(e) => handleUpdatePoi(index, "address", e.target.value)}
+                                id={`${p.key}-address`}
+                                value={p.address ?? ""}
+                                onChange={(e) => update(p.key, { address: e.target.value })}
                               />
-                              {poi.latitude && poi.longitude ? (
-                                <div className="flex items-center justify-center w-10 h-10 bg-green-100 text-green-600 rounded-md" title="Geocodificado com sucesso">
-                                  <MapPin className="h-5 w-5" />
-                                </div>
-                              ) : (
-                                <div className="flex items-center justify-center w-10 h-10 bg-yellow-100 text-yellow-600 rounded-md" title="Localização não encontrada">
-                                  <MapPin className="h-5 w-5" />
-                                </div>
-                              )}
+                              <span
+                                className={cn(
+                                  "flex items-center gap-1 text-xs whitespace-nowrap",
+                                  p.location ? "text-green-700 dark:text-green-400" : "text-amber-700 dark:text-amber-400",
+                                )}
+                              >
+                                <MapPin className="h-4 w-4" />
+                                {p.location ? "Localizado" : "Sem localização"}
+                              </span>
                             </div>
                           </div>
                           <div className="space-y-2">
-                            <Label>Descrição</Label>
+                            <Label htmlFor={`${p.key}-description`}>Descrição</Label>
                             <Textarea
-                              value={poi.description}
-                              onChange={(e) => handleUpdatePoi(index, "description", e.target.value)}
+                              id={`${p.key}-description`}
+                              value={p.description ?? ""}
+                              onChange={(e) => update(p.key, { description: e.target.value })}
                             />
                           </div>
                         </div>
@@ -327,7 +250,8 @@ export default function NewTripPage() {
                           variant="ghost"
                           size="icon"
                           className="text-destructive hover:text-destructive/90"
-                          onClick={() => handleRemovePoi(index)}
+                          onClick={() => setPlaces((prev) => prev.filter((x) => x.key !== p.key))}
+                          aria-label={`Remover ${p.name}`}
                         >
                           <Trash2 className="h-5 w-5" />
                         </Button>

@@ -25,13 +25,19 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
-  // pdf-parse and mammoth leave in F1.5 (native Gemini file input).
-  serverExternalPackages: ["pdf-parse", "mammoth", "firebase-admin", "@google-cloud/firestore", "google-gax"],
+  serverExternalPackages: ["firebase-admin", "@google-cloud/firestore", "google-gax"],
   async headers() {
     return [
       { source: "/:path*", headers: securityHeaders },
       // Public share pages must not leak their token via Referer.
-      { source: "/shared/:path*", headers: [{ key: "Referrer-Policy", value: "no-referrer" }] },
+      {
+        source: "/shared/:path*",
+        headers: [
+          { key: "Referrer-Policy", value: "no-referrer" },
+          { key: "Cache-Control", value: "private, no-store" },
+          { key: "X-Robots-Tag", value: "noindex, nofollow" },
+        ],
+      },
     ];
   },
 };

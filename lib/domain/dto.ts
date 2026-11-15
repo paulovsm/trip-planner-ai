@@ -42,4 +42,12 @@ export type PublicTripDto = {
   }[]
 }
 
+export type ChatMessageView = {
+  id: string
+  role: "user" | "model"
+  text: string
+  sources?: { title?: string; uri?: string }[]
+  createdAt: string
+}
+
 export type PublicPlace = Pick<Place, "name" | "category" | "address" | "city" | "location" | "visited">

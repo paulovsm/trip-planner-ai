@@ -1,60 +1,41 @@
 "use client"
 
-import { useState } from "react"
-import { useForm } from "react-hook-form"
-import { zodResolver } from "@hookform/resolvers/zod"
-import * as z from "zod"
-import { Button } from "@/components/ui/button"
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form"
-import { Input } from "@/components/ui/input"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Upload, FileText, Loader2 } from "lucide-react"
+import { useId, useState } from "react"
+import { FileText, Loader2, Upload } from "lucide-react"
 import { toast } from "sonner"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { api, errorMessage } from "@/lib/client/api"
+import { MAX_IMPORT_BYTES, type ImportResult } from "@/lib/domain/import"
 
-const formSchema = z.object({
-  file: z
-    .custom<FileList>()
-    .refine((val) => typeof FileList !== "undefined" && val instanceof FileList, "Arquivo inválido")
-    .refine((files) => files && files.length > 0, {
-      message: "Por favor, selecione um arquivo.",
-    }),
-})
+const ACCEPT = ".pdf,.docx,image/jpeg,image/png,image/webp,image/heic"
 
-export function DocumentImporter({ onImport }: { onImport: (data: any) => void }) {
+export function DocumentImporter({ onImport }: { onImport: (data: ImportResult) => void | Promise<void> }) {
+  const id = useId()
+  const [file, setFile] = useState<File | null>(null)
   const [isUploading, setIsUploading] = useState(false)
 
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-  })
-
-  async function onSubmit(values: z.infer<typeof formSchema>) {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!file) {
+      toast.error("Selecione um arquivo.")
+      return
+    }
+    if (file.size > MAX_IMPORT_BYTES) {
+      toast.error("O arquivo passa de 4 MB. Tente uma versão menor ou uma foto com menos resolução.")
+      return
+    }
     setIsUploading(true)
-    const formData = new FormData()
-    formData.append("file", values.file[0])
-
     try {
-      const response = await fetch("/api/import", {
-        method: "POST",
-        body: formData,
-      })
-
-      if (!response.ok) {
-        throw new Error("Falha na importação")
-      }
-
-      const data = await response.json()
-      onImport(data)
-      toast.success("Documento processado com sucesso!")
+      const data = await api.import.extract(file)
+      await onImport(data)
+      toast.success(`${data.places.length} lugares encontrados no documento.`)
+      setFile(null)
+      ;(e.target as HTMLFormElement).reset()
     } catch (error) {
-      toast.error("Erro ao processar documento. Tente novamente.")
-      console.error(error)
+      toast.error(errorMessage(error, "Erro ao processar documento. Tente novamente."))
     } finally {
       setIsUploading(false)
     }
@@ -69,44 +50,31 @@ export function DocumentImporter({ onImport }: { onImport: (data: any) => void }
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="file"
-              render={({ field: { onChange, value, ...field } }) => (
-                <FormItem>
-                  <FormLabel>Selecione um arquivo (PDF ou DOCX)</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="file"
-                      accept=".pdf,.docx"
-                      disabled={isUploading}
-                      onChange={(e) => {
-                        onChange(e.target.files)
-                      }}
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor={`${id}-file`}>PDF, DOCX ou foto do roteiro (até 4 MB)</Label>
+            <Input
+              id={`${id}-file`}
+              type="file"
+              accept={ACCEPT}
+              disabled={isUploading}
+              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
             />
-            <Button type="submit" disabled={isUploading} className="w-full">
-              {isUploading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Processando...
-                </>
-              ) : (
-                <>
-                  <Upload className="mr-2 h-4 w-4" />
-                  Importar e Extrair
-                </>
-              )}
-            </Button>
-          </form>
-        </Form>
+          </div>
+          <Button type="submit" disabled={isUploading || !file} className="w-full">
+            {isUploading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Processando...
+              </>
+            ) : (
+              <>
+                <Upload className="mr-2 h-4 w-4" />
+                Importar e Extrair
+              </>
+            )}
+          </Button>
+        </form>
       </CardContent>
     </Card>
   )
