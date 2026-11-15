@@ -1,79 +1,46 @@
 # TripPlanner AI
 
-TripPlanner AI é uma aplicação web inteligente para planejamento de viagens, projetada para ajudar viajantes a criar, organizar e otimizar seus roteiros de forma eficiente. Com integração de Inteligência Artificial e mapas interativos, o TripPlanner transforma a complexidade de planejar uma viagem em uma experiência simples e agradável.
+Planejamento de viagens para você e quem você convidar: lugares, dias, ordem das visitas e percursos, com um assistente de IA e (em breve) exportação de GPX para navegar no relógio. Vocabulário do domínio em [GLOSSARY.md](GLOSSARY.md); decisões de arquitetura em [docs/adr/](docs/adr/).
 
-## 🚀 Funcionalidades Principais
+## Funcionalidades
 
-- **Planejamento Inteligente**: Crie viagens detalhadas com datas, destinos e pontos de interesse.
-- **Otimização de Rotas**: Organize automaticamente a ordem das visitas para economizar tempo, com suporte para diferentes modos de transporte (Carro, Transporte Público, A pé).
-- **Mapa Interativo**: Visualize todos os seus pontos e rotas em um mapa dinâmico do Google Maps.
-- **Assistente de IA (Gemini)**: Converse com um assistente virtual integrado para receber dicas personalizadas, sugestões de restaurantes e atrações.
-- **Importação de Documentos**: Importe reservas e tickets (PDF/Docx) para extrair informações automaticamente para o seu roteiro.
-- **Itinerário Detalhado**: Gerencie suas atividades dia a dia, com funcionalidade de arrastar e soltar para reordenar.
-- **Geocodificação Automática**: Adicione pontos apenas pelo nome ou endereço e deixe o sistema encontrar a localização exata.
-- **Compartilhamento**: Compartilhe seus roteiros com amigos e familiares através de links públicos.
+- **Viagens com coeditores**: o dono convida pessoas por email; elas editam lugares e dias. Login só com Google, restrito a donos e convidados.
+- **Lugares e roteiro por dia**: cada Day tem sua sequência de paradas (com horário, duração e notas) e seu modo de deslocamento (a pé, bicicleta, carro, transporte público).
+- **Mapa e otimização**: visualize os lugares e o percurso de cada dia no Google Maps e reordene para encurtar o caminho.
+- **Importação com IA**: envie um PDF, DOCX ou foto do roteiro; o Gemini extrai lugares e dias para você revisar antes de salvar.
+- **Assistente (Gemini 4)**: conversa com o contexto da viagem, busca no Google com fontes citadas, histórico salvo por viagem.
+- **Link público**: somente leitura, com validade e revogação, sem expor notas nem a identidade do dono.
 
-## 🛠️ Tecnologias Utilizadas
+Próximas fases (veja o plano): interface mobile-first com PWA e modo offline, Routes API com GPX para o Huawei Health, e IA que propõe alterações com confirmação.
 
-- **Frontend**: [Next.js 16](https://nextjs.org/) (App Router), [React 19](https://react.dev/), [Tailwind CSS](https://tailwindcss.com/), [Shadcn UI](https://ui.shadcn.com/).
-- **Backend**: Next.js API Routes (Server Actions).
-- **Banco de Dados & Auth**: [Firebase](https://firebase.google.com/) (Firestore, Authentication).
-- **Mapas**: [Google Maps Platform](https://developers.google.com/maps) (Maps JS API, Places API, Directions API, Geocoding API).
-- **Inteligência Artificial**: [Google Gemini API](https://ai.google.dev/).
-- **Gerenciamento de Estado**: React Query, Zustand.
+## Tecnologias
 
-## 📦 Instalação e Configuração
+- **App**: Next.js 16 (App Router, route handlers), React 19, Tailwind CSS 4, shadcn/ui, TanStack Query.
+- **Dados e auth**: Firestore via Firebase Admin SDK (sem acesso direto do cliente), Auth.js v5 com Google.
+- **Mapas**: Google Maps Platform.
+- **IA**: Gemini (`@google/genai`), `gemini-4-argon` com fallback `gemini-4-hydrogen`.
+- **Qualidade**: zod em todas as entradas, Vitest (unidade + integração no emulador do Firestore), GitHub Actions.
 
-Para rodar o projeto localmente, siga os passos abaixo:
+## Começando
 
-1. **Clone o repositório**
-   ```bash
-   git clone https://github.com/paulovsm/trip-planner-ai.git
-   cd trip-planner-ai
-   ```
+```bash
+npm install
+cp .env.example .env   # preencha conforme o SETUP.md
+npm run dev
+```
 
-2. **Instale as dependências**
-   ```bash
-   npm install
-   ```
+Guia completo de chaves, Firestore, OAuth e deploy: [SETUP.md](SETUP.md).
 
-3. **Configure as Variáveis de Ambiente**
-   Crie um arquivo `.env` na raiz do projeto com as seguintes chaves (baseado no `.env.example`):
+## Estrutura
 
-   ```env
-   # Google Maps
-   NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=sua_chave_aqui
+- `app/` — páginas e rotas da API (`app/api/**/route.ts`, sempre via `withRoute`).
+- `lib/domain/` — modelo de domínio: schemas zod (fonte dos tipos), regras puras e DTOs.
+- `lib/server/` — autorização, rate limit, acesso ao Firestore e `commands/` (todas as escritas).
+- `lib/ai/` — cliente Gemini, prompts e saneamento de dados não confiáveis.
+- `lib/client/` — cliente tipado da API para o navegador.
+- `components/` — componentes React (`features/`) e primitivas de UI (`ui/`).
+- `tests/` — testes de integração (emulador) e de arquitetura.
 
-   # Firebase (Client & Admin)
-   NEXT_PUBLIC_FIREBASE_API_KEY=...
-   FIREBASE_PROJECT_ID=...
-   FIREBASE_CLIENT_EMAIL=...
-   FIREBASE_PRIVATE_KEY=...
+## Licença
 
-   # Google Gemini AI
-   GEMINI_API_KEY=sua_chave_aqui
-
-   # NextAuth
-   NEXTAUTH_URL=http://localhost:3000
-   NEXTAUTH_SECRET=sua_chave_secreta
-   ```
-
-4. **Execute o projeto**
-   ```bash
-   npm run dev
-   ```
-
-   O servidor iniciará em `http://localhost:3000`.
-
-## 📱 Estrutura do Projeto
-
-- `/app`: Rotas e páginas da aplicação (Next.js App Router).
-- `/components`: Componentes React modulares.
-  - `/features`: Funcionalidades específicas (mapa, chat, otimizador).
-  - `/ui`: Componentes de interface reutilizáveis.
-- `/lib`: Configurações de serviços externos (Firebase, Gemini, Maps).
-- `/types`: Definições de tipos TypeScript.
-
-## 📄 Licença
-
-Este projeto está licenciado sob a licença MIT.
+MIT.

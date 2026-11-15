@@ -1,121 +1,75 @@
-# Guia de Configuração - TripPlanner
+# Guia de configuração — TripPlanner
 
-Este guia detalha como configurar o ambiente de desenvolvimento, obter as chaves de API necessárias (Google Cloud, Firebase/Supabase) e rodar o projeto.
+Como obter as chaves, configurar o banco e rodar o projeto localmente e na Vercel. Variáveis de ambiente: veja `.env.example`.
 
 ## 1. Pré-requisitos
 
-- Node.js 18+ instalado
-- Conta no Google Cloud Platform
-- Conta no Supabase (ou PostgreSQL local)
+- Node.js 22+ (`.nvmrc`)
+- Um projeto no Google Cloud / Firebase
+- Para os testes de integração: Java 21 (emulador do Firestore). No macOS: `brew install openjdk@21`.
 
-## 2. Configuração do Banco de Dados (Firebase)
+## 2. Firestore
 
-O TripPlanner usa Firebase Firestore.
-
-1. Crie um projeto no [Firebase Console](https://console.firebase.google.com/).
-2. Vá em **Criação > Firestore Database** e crie um banco de dados (modo de teste para começar).
-3. Vá em **Configurações do Projeto > Contas de serviço**.
-4. Clique em **Gerar nova chave privada**. Isso baixará um arquivo JSON.
-5. Abra o arquivo JSON e copie os valores para o seu `.env`:
-   - `project_id` -> `FIREBASE_PROJECT_ID`
-   - `client_email` -> `FIREBASE_CLIENT_EMAIL`
-   - `private_key` -> `FIREBASE_PRIVATE_KEY`
-
-## 3. Configuração do Google Cloud Platform (GCP)
-
-Você precisará de um projeto no GCP para Maps, Login e Gemini.
-
-### 3.1 Criar Projeto
-1. Acesse o [Google Cloud Console](https://console.cloud.google.com/).
-2. Crie um novo projeto (ex: `tripplanner-dev`).
-
-### 3.2 Ativar APIs
-No menu "APIs e Serviços" > "Biblioteca", ative as seguintes APIs:
-- **Maps JavaScript API** (para o mapa no frontend)
-- **Directions API** (para rotas)
-- **Places API (New)** (para geocodificação e busca)
-- **Generative Language API** (para o Gemini AI)
-
-### 3.3 Criar Credenciais (API Keys)
-Vá em "APIs e Serviços" > "Credenciais".
-
-**Chave 1: Google Maps (Frontend)**
-1. Clique em "Criar Credenciais" > "Chave de API".
-2. Nomeie como `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`.
-3. **Restrições de API**: Selecione apenas "Maps JavaScript API".
-4. **Restrições de Aplicação** (Produção): Adicione seu domínio (ex: `tripplanner.vercel.app`). Para dev, pode deixar aberto ou adicionar `localhost:3000`.
-
-**Chave 2: Google Maps (Backend)**
-1. Crie outra chave. Nomeie como `GOOGLE_MAPS_API_KEY`.
-2. **Restrições de API**: Selecione "Directions API" e "Places API".
-3. **Restrições de Aplicação**: Selecione "Endereços IP" e adicione o IP do seu servidor (ou deixe sem restrição em dev).
-
-**Chave 3: Gemini AI**
-1. Se preferir, use o [Google AI Studio](https://aistudio.google.com/) para gerar uma chave específica para o Gemini.
-2. Nomeie como `GOOGLE_GEMINI_API_KEY`.
-
-### 3.4 Configurar OAuth (Login com Google)
-
-**Importante**: Mesmo usando Firebase, o NextAuth precisa de credenciais OAuth do Google Cloud para realizar o login no servidor.
-
-1. Ainda em "Credenciais" no Google Cloud Console, clique em "Criar Credenciais" > "ID do cliente OAuth".
-2. Tipo de aplicativo: **Aplicação Web**.
-3. **Origens JavaScript autorizadas**:
-   - `http://localhost:3000`
-   - `https://seu-dominio-producao.vercel.app`
-4. **URIs de redirecionamento autorizados**:
-   - `http://localhost:3000/api/auth/callback/google`
-   - `https://seu-dominio-producao.vercel.app/api/auth/callback/google`
-5. Copie o **ID do Cliente** e a **Chave Secreta do Cliente**.
-6. Adicione ao seu `.env`:
-   ```env
-   GOOGLE_CLIENT_ID="seu-client-id"
-   GOOGLE_CLIENT_SECRET="seu-client-secret"
+1. No [Firebase Console](https://console.firebase.google.com/), abra o projeto e vá em **Firestore Database**.
+2. Crie um banco **nomeado** (ex.: `tripplanner`) em **modo de produção**. O app começou um esquema novo sem migração (ADR-0003); não reutilize o banco antigo.
+3. Em **Configurações do projeto → Contas de serviço → Gerar nova chave privada**, copie do JSON para o `.env`:
+   - `project_id` → `FIREBASE_PROJECT_ID`
+   - `client_email` → `FIREBASE_CLIENT_EMAIL`
+   - `private_key` → `FIREBASE_PRIVATE_KEY`
+   - nome do banco → `FIRESTORE_DATABASE_ID`
+4. Publique as regras (negam todo acesso direto; o app usa só o Admin SDK, ADR-0002), os índices e a política de TTL de `rateLimits`:
+   ```bash
+   npx firebase deploy --only firestore --project <seu-project-id>
    ```
+   Para um banco nomeado, acrescente `"database": "tripplanner"` ao objeto `firestore` do `firebase.json` antes do deploy.
 
-## 4. Configuração do Ambiente (.env)
+## 3. Google Cloud
 
-Renomeie o arquivo `.env.example` para `.env` e preencha as variáveis:
+### APIs (APIs e serviços → Biblioteca)
+- **Maps JavaScript API**
+- **Geocoding API** (localização de lugares no navegador)
+- **Directions API** (traçado no navegador; substituída pela Routes API na fase F3)
+- **Places API (New)** (busca de lugares, a partir da fase F2)
+- **Generative Language API** (Gemini) — ou gere a chave direto no [Google AI Studio](https://aistudio.google.com/)
 
-```env
-# Banco de Dados (Firebase)
-FIREBASE_PROJECT_ID="seu-project-id"
-FIREBASE_CLIENT_EMAIL="seu-client-email@..."
-FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n..."
+### Chaves
+- **`NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`** (navegador): restrinja por **referenciador HTTP** (`http://localhost:3000/*`, `https://<seu-dominio>/*`) e às APIs acima de Maps. Ela fica pública no bundle; a restrição é a única proteção.
+- **`GEMINI_API_KEY`**: só no servidor. Nunca use `NEXT_PUBLIC_` nela.
 
-# NextAuth
-NEXTAUTH_URL="http://localhost:3000" # Em produção, use a URL da Vercel
-NEXTAUTH_SECRET="gere-uma-hash-aleatoria-aqui" # Use: openssl rand -base64 32
+### Login com Google (Auth.js v5)
+1. **APIs e serviços → Credenciais → Criar credenciais → ID do cliente OAuth → Aplicativo da Web.**
+2. Origens autorizadas: `http://localhost:3000` e `https://<seu-dominio>`.
+3. URIs de redirecionamento: `http://localhost:3000/api/auth/callback/google` e `https://<seu-dominio>/api/auth/callback/google`.
+4. Copie para `AUTH_GOOGLE_ID` e `AUTH_GOOGLE_SECRET`. Gere `AUTH_SECRET` com `npx auth secret`.
+5. Defina `OWNER_EMAILS` com o(s) seu(s) email(s) Google. Só eles e quem for convidado para uma viagem conseguem entrar (ADR-0007).
 
-# Google Maps
-NEXT_PUBLIC_GOOGLE_MAPS_API_KEY="chave-frontend-maps-javascript"
-GOOGLE_MAPS_API_KEY="chave-backend-directions-places"
+## 4. Rodando
 
-# Google Gemini
-GOOGLE_GEMINI_API_KEY="chave-gemini-ai"
-
-# OAuth Providers
-GOOGLE_CLIENT_ID="seu-client-id-oauth"
-GOOGLE_CLIENT_SECRET="seu-client-secret-oauth"
+```bash
+npm install
+cp .env.example .env   # e preencha
+npm run dev            # http://localhost:3000
 ```
 
-## 5. Inicialização
+Verificações:
 
-1. Instale as dependências:
-   ```bash
-   npm install
-   ```
+```bash
+npm run lint
+npm run typecheck
+npm test               # testes unitários
+npm run test:int       # integração no emulador do Firestore (requer Java 21)
+npm run build
+```
 
-2. Inicie o servidor de desenvolvimento:
-   ```bash
-   npm run dev
-   ```
+Para rodar o build de produção fora da Vercel (`npm start`), defina `AUTH_TRUST_HOST=true` e `AUTH_URL`.
 
-Acesse `http://localhost:3000`.
+## 5. Modelos Gemini
+
+Padrão: `gemini-4-argon`, com fallback automático para `gemini-4-hydrogen` em erro ou timeout. Cada tarefa (`CHAT`, `IMPORT`, `AGENT`) aceita `GEMINI_MODEL_<TAREFA>`, `GEMINI_THINKING_<TAREFA>` (`MINIMAL|LOW|MEDIUM|HIGH`) e `GEMINI_TIMEOUT_<TAREFA>_MS`. Os logs do servidor registram modelo, latência, uso de fallback e tokens (`[ai] task=...`).
 
 ## 6. Deploy na Vercel
 
-1. Faça push do código para o GitHub.
-2. Importe o projeto na Vercel.
-3. Nas configurações do projeto na Vercel, adicione todas as variáveis de ambiente do `.env`.
-4. O deploy deve ocorrer automaticamente.
+1. Importe o repositório na Vercel.
+2. Cadastre as variáveis do `.env` (sem `AUTH_TRUST_HOST`, que a Vercel dispensa).
+3. Adicione o domínio de produção nas restrições da chave do Maps e nas URIs do OAuth.
+4. Para previews com login, configure `AUTH_REDIRECT_PROXY_URL` (o OAuth não aceita URLs de preview dinâmicas).
