@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -43,9 +43,9 @@ export function EditPointDialog({ tripId, point, onSuccess }: EditPointDialogPro
     city: point.city || "",
   })
 
-  // Reset form data when dialog opens with new point data
-  useEffect(() => {
-    if (open) {
+  // Reset form data from the latest point whenever the dialog opens
+  const handleOpenChange = (next: boolean) => {
+    if (next) {
       setFormData({
         name: point.name,
         description: point.description || "",
@@ -54,7 +54,8 @@ export function EditPointDialog({ tripId, point, onSuccess }: EditPointDialogPro
         city: point.city || "",
       })
     }
-  }, [open, point])
+    setOpen(next)
+  }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
@@ -119,7 +120,7 @@ export function EditPointDialog({ tripId, point, onSuccess }: EditPointDialogPro
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         <Button
           variant="ghost"

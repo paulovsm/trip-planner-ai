@@ -153,7 +153,7 @@ export async function GET(req: NextRequest) {
     // Fallback to client-side sorting to avoid needing a composite index immediately
     const tripsSnapshot = await tripsRef.where('userId', '==', userId).get();
 
-    let trips = await Promise.all(tripsSnapshot.docs.map(async doc => {
+    const trips = await Promise.all(tripsSnapshot.docs.map(async doc => {
       const data = doc.data();
       // Count points
       const pointsSnapshot = await doc.ref.collection('points').count().get();

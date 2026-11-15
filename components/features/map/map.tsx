@@ -69,10 +69,16 @@ export function Map({ points, directions, transitSegments, onMapClick, onMarkerC
     );
   };
 
-  // Update internal selected point when activePoint prop changes
+  // Sync selection with the activePoint prop during render (no effect needed)
+  const [prevActivePoint, setPrevActivePoint] = useState(activePoint)
+  if (activePoint !== prevActivePoint) {
+    setPrevActivePoint(activePoint)
+    if (activePoint) setSelectedPoint(activePoint)
+  }
+
+  // Pan/zoom the map to the active point
   useEffect(() => {
     if (activePoint) {
-      setSelectedPoint(activePoint)
       if (map && activePoint.latitude && activePoint.longitude) {
         map.panTo({ lat: activePoint.latitude, lng: activePoint.longitude })
         map.setZoom(15)

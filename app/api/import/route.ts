@@ -20,6 +20,8 @@ export async function POST(req: NextRequest) {
     let text = "";
 
     if (file.type === "application/pdf") {
+      // TODO(F1.5): replaced by native Gemini file input; pdf-parse is removed then.
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
       const pdf = require("pdf-parse");
       const data = await pdf(buffer);
       text = data.text;
