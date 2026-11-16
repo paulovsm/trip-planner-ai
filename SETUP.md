@@ -27,18 +27,66 @@ Como obter as chaves, configurar o banco e rodar o projeto localmente e na Verce
 
 ## 3. Google Cloud
 
-### APIs (APIs e serviços → Biblioteca)
-- **Maps JavaScript API**
-- **Geocoding API** (localização de lugares no navegador)
-- **Places API (New)** (busca de lugares no navegador)
-- **Routes API** (percursos, Otimizar e GPX — chamada só pelo servidor)
-- **Generative Language API** (Gemini) — ou gere a chave direto no [Google AI Studio](https://aistudio.google.com/)
+O Google Maps Platform exige **faturamento ativo** no projeto (Faturamento → vincular uma conta). O uso de uma pessoa e família fica dentro da cota gratuita mensal; se quiser, crie um alerta de orçamento em **Faturamento → Orçamentos e alertas**.
 
-### Chaves
-- **`NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`** (navegador): restrinja por **referenciador HTTP** (`http://localhost:3000/*`, `https://<seu-dominio>/*`) e às APIs acima de Maps. Ela fica pública no bundle; a restrição é a única proteção.
-- **`GOOGLE_MAPS_SERVER_KEY`** (servidor): restrinja **por API** à Routes API (sem restrição de referenciador, pois é chamada do servidor). Nunca use `NEXT_PUBLIC_` nela. Sem ela, "Calcular percurso", "Otimizar" e o GPX mostram um aviso; para desenvolvimento local use `MAPS_FAKE=1` (linhas retas).
-- **`NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID`** (opcional): um Map ID do Cloud-based Map Styling para os marcadores avançados e o modo escuro do mapa. Sem ele usa-se `DEMO_MAP_ID`.
-- **`GEMINI_API_KEY`**: só no servidor. Nunca use `NEXT_PUBLIC_` nela.
+### APIs (APIs e serviços → Biblioteca)
+| API | Usada por | Chave |
+|---|---|---|
+| **Maps JavaScript API** | mapa | navegador |
+| **Places API (New)** | autocomplete ao adicionar lugar (navegador); importação e busca do assistente (servidor) | as duas |
+| **Routes API** | Calcular percurso, Otimizar, GPX | servidor |
+| **Generative Language API** (Gemini) | chat, assistente, importação | `GEMINI_API_KEY` (ou gere direto no [Google AI Studio](https://aistudio.google.com/)) |
+
+### Chave do navegador — `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`
+1. **APIs e serviços → Credenciais → Criar credenciais → Chave de API.** Na chave criada, clique em **Editar chave de API**.
+2. **Restrições de aplicativo → Sites (referenciadores HTTP)**: `http://localhost:3000/*` e `https://<seu-dominio>/*`.
+3. **Restrições de API → Restringir chave**: Maps JavaScript API e Places API (New).
+4. Salve e copie para o `.env`. Ela fica pública no bundle; as restrições são a única proteção.
+
+### Chave do servidor — `GOOGLE_MAPS_SERVER_KEY`
+Usada só pelas rotas da API (Routes API e Places Text Search). Nunca use `NEXT_PUBLIC_` nela. Sem ela, "Calcular percurso", "Otimizar", o GPX, a importação e a busca do assistente mostram um aviso. Para desenvolvimento local sem chave, use `MAPS_FAKE=1` (linhas retas e lugares fictícios).
+
+**Pelo Console**
+1. Ative a **Routes API** e a **Places API (New)** em **APIs e serviços → Biblioteca**.
+2. **APIs e serviços → Credenciais → Criar credenciais → Chave de API**, depois **Editar chave de API**:
+   - Nome: `TripPlanner servidor`.
+   - **Restrições de aplicativo → Nenhuma.** Referenciador HTTP não funciona em chamadas do servidor, e a Vercel não tem IP fixo.
+   - **Restrições de API → Restringir chave** → marque só **Routes API** e **Places API (New)**.
+3. Salve, copie a chave para `GOOGLE_MAPS_SERVER_KEY` no `.env` e nas variáveis da Vercel.
+
+**Ou pelo CLI** (`gcloud auth login` antes):
+```bash
+gcloud services enable routes.googleapis.com places.googleapis.com --project <seu-project-id>
+gcloud services api-keys create --project <seu-project-id> \
+  --display-name="TripPlanner servidor" \
+  --api-target=service=routes.googleapis.com \
+  --api-target=service=places.googleapis.com
+# o comando mostra o "keyString"; se não mostrar:
+gcloud services api-keys list --project <seu-project-id>
+gcloud services api-keys get-key-string <KEY_ID> --project <seu-project-id>
+```
+
+**Teste rápido** (deve devolver `distanceMeters` e uma lista de `places`; erro `403 PERMISSION_DENIED` indica API não ativada ou não incluída na restrição):
+```bash
+KEY=<sua-chave>
+curl -s -X POST https://routes.googleapis.com/directions/v2:computeRoutes \
+  -H "Content-Type: application/json" -H "X-Goog-Api-Key: $KEY" \
+  -H "X-Goog-FieldMask: routes.distanceMeters,routes.duration" \
+  -d '{"origin":{"location":{"latLng":{"latitude":-23.5614,"longitude":-46.6559}}},"destination":{"location":{"latLng":{"latitude":-23.5874,"longitude":-46.6576}}},"travelMode":"WALK"}'
+curl -s -X POST https://places.googleapis.com/v1/places:searchText \
+  -H "Content-Type: application/json" -H "X-Goog-Api-Key: $KEY" \
+  -H "X-Goog-FieldMask: places.displayName" \
+  -d '{"textQuery":"MASP São Paulo"}'
+```
+
+### Map ID (opcional) — `NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID`
+Habilita o estilo do mapa na nuvem (marcadores avançados com seu estilo e modo escuro). Sem ele o app usa `DEMO_MAP_ID`, que funciona normalmente.
+1. **Google Maps Platform → Gerenciamento de mapas → Criar ID do mapa.**
+2. Tipo **JavaScript**, renderização **Vetorial**. Salve e copie o ID.
+3. Opcional: em **Estilos de mapa**, associe um estilo claro e um escuro ao ID.
+
+### Gemini — `GEMINI_API_KEY`
+Gere no [Google AI Studio](https://aistudio.google.com/) → **Get API key**. Só no servidor; nunca use `NEXT_PUBLIC_` nela.
 
 ### Login com Google (Auth.js v5)
 1. **APIs e serviços → Credenciais → Criar credenciais → ID do cliente OAuth → Aplicativo da Web.**
