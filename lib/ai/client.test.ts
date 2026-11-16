@@ -29,7 +29,7 @@ describe("taskConfig", () => {
   })
 
   it("ignores invalid thinking levels", () => {
-    expect(taskConfig("agent", { GEMINI_THINKING_AGENT: "extreme" }).thinkingLevel).toBe(ThinkingLevel.MEDIUM)
+    expect(taskConfig("agent", { GEMINI_THINKING_AGENT: "extreme" }).thinkingLevel).toBe(ThinkingLevel.LOW)
   })
 })
 

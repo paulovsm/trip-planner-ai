@@ -21,7 +21,9 @@ const FALLBACK_MODEL = "gemini-4-hydrogen"
 const DEFAULTS: Record<AiTask, { thinkingLevel: ThinkingLevel; timeoutMs: number }> = {
   chat: { thinkingLevel: ThinkingLevel.LOW, timeoutMs: 45_000 },
   import: { thinkingLevel: ThinkingLevel.HIGH, timeoutMs: 90_000 },
-  agent: { thinkingLevel: ThinkingLevel.MEDIUM, timeoutMs: 60_000 },
+  // Measured live (2026-11-16): Argon agent turns took ~44-61 s at MEDIUM vs ~20-42 s at LOW;
+  // gemini-4-hydrogen at LOW took 4-7 s with the same proposals. MINIMAL is rejected by Argon.
+  agent: { thinkingLevel: ThinkingLevel.LOW, timeoutMs: 60_000 },
 }
 
 export type TaskConfig = { model: string; fallbackModel: string; thinkingLevel: ThinkingLevel; timeoutMs: number }
