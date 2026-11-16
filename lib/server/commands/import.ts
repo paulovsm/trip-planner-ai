@@ -3,6 +3,7 @@ import { nanoid } from "nanoid"
 import { z } from "zod"
 import { generate } from "@/lib/ai/client"
 import { IMPORT_SYSTEM_INSTRUCTION } from "@/lib/ai/prompts"
+import { toGeminiSchema } from "@/lib/ai/schema"
 import { DomainError, validation } from "@/lib/domain/errors"
 import { ImportResult, MAX_IMPORT_DAYS, MAX_IMPORT_PLACES, type ImportMimeType } from "@/lib/domain/import"
 import { CreatePlaceInput, Day, IsoDate, MAX_STOPS_PER_DAY, Place } from "@/lib/domain/schemas"
@@ -26,7 +27,7 @@ export async function extractItinerary(file: { mimeType: ImportMimeType; data: B
     {
       systemInstruction: IMPORT_SYSTEM_INSTRUCTION,
       responseMimeType: "application/json",
-      responseJsonSchema: z.toJSONSchema(ImportResult),
+      responseJsonSchema: toGeminiSchema(ImportResult),
     },
   )
   let json: unknown

@@ -44,3 +44,6 @@ next-env.d.ts
 # firebase emulator
 firestore-debug.log
 firebase-debug.log
+
+# F1.8 GPX test output
+/gpx-test/

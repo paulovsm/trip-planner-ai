@@ -1,6 +1,6 @@
 import { ApiError, ThinkingLevel } from "@google/genai"
 import { describe, expect, it } from "vitest"
-import { isRetriable, stripThoughts, taskConfig } from "./client"
+import { DUMMY_SIGNATURE, isRetriable, taskConfig, withDummySignatures } from "./client"
 
 describe("taskConfig", () => {
   it("defaults to Argon with Hydrogen fallback and per-task thinking", () => {
@@ -44,14 +44,20 @@ describe("isRetriable", () => {
   })
 })
 
-describe("stripThoughts", () => {
-  it("removes thought parts and signatures before switching models", () => {
-    const out = stripThoughts([
+describe("withDummySignatures", () => {
+  it("sets the dummy signature only on functionCall parts, keeping everything else", () => {
+    const out = withDummySignatures([
       {
         role: "model",
-        parts: [{ text: "pensando", thought: true }, { text: "Resposta", thoughtSignature: "c2ln" }],
+        parts: [
+          { text: "Vou adicionar.", thoughtSignature: "orig" },
+          { functionCall: { name: "addStop", args: { placeName: "Belém" } }, thoughtSignature: "orig" },
+        ],
       },
     ])
-    expect(out).toEqual([{ role: "model", parts: [{ text: "Resposta" }] }])
+    expect(out[0].parts).toEqual([
+      { text: "Vou adicionar.", thoughtSignature: "orig" },
+      { functionCall: { name: "addStop", args: { placeName: "Belém" } }, thoughtSignature: DUMMY_SIGNATURE },
+    ])
   })
 })

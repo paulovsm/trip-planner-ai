@@ -57,19 +57,23 @@ export function isRetriable(err: unknown): boolean {
   return name === "AbortError" || name === "TimeoutError"
 }
 
-/** Thought signatures are model-specific; drop them before switching models. */
-export function stripThoughts(contents: Content[]): Content[] {
+/**
+ * Gemini 4 requires a thought signature on every functionCall in the history, and
+ * rejects histories where they were removed (verified by scripts/ai-probe.ts: the
+ * Hydrogen fallback accepts Argon's signatures as-is). If a model still rejects a
+ * signature, the documented escape hatch is a dummy signature on functionCall parts.
+ */
+export const DUMMY_SIGNATURE = "skip_thought_signature_validator"
+
+export function withDummySignatures(contents: Content[]): Content[] {
   return contents.map((c) => ({
     ...c,
-    parts: (c.parts ?? [])
-      .filter((p) => !p.thought)
-      .map((p) => {
-        const rest = { ...p }
-        delete rest.thoughtSignature
-        return rest
-      }),
+    parts: (c.parts ?? []).map((p) => (p.functionCall ? { ...p, thoughtSignature: DUMMY_SIGNATURE } : p)),
   }))
 }
+
+const isSignatureError = (err: unknown) =>
+  err instanceof ApiError && err.status === 400 && /thought_signature/i.test(err.message)
 
 function toResult(res: GenerateContentResponse, model: string, usedFallback: boolean): AiResult {
   const candidate = res.candidates?.[0]
@@ -118,7 +122,13 @@ export async function generate(
   } catch (err) {
     if (!isRetriable(err) || cfg.model === cfg.fallbackModel) throw err
     console.warn(`[ai] ${task}: ${cfg.model} failed (${describe(err)}); falling back to ${cfg.fallbackModel}`)
-    const res = await call(cfg.fallbackModel, stripThoughts(contents))
+    let res: GenerateContentResponse
+    try {
+      res = await call(cfg.fallbackModel, contents)
+    } catch (fallbackErr) {
+      if (!isSignatureError(fallbackErr)) throw fallbackErr
+      res = await call(cfg.fallbackModel, withDummySignatures(contents))
+    }
     log(task, cfg.fallbackModel, started, true, res)
     return toResult(res, cfg.fallbackModel, true)
   }
