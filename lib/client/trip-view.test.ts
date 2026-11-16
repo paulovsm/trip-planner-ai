@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 import type { TripDetail } from "@/lib/domain/dto"
 import type { Day, Place } from "@/lib/domain/schemas"
-import { dayPath, defaultDay, googleMapsDayUrl, mapPins, tripDatesLabel } from "./trip-view"
+import { dayChipLabel, dayLongLabel, dayPath, defaultDay, googleMapsDayUrl, mapPins, tripDatesLabel } from "./trip-view"
 
 const ts = "2026-11-15T00:00:00.000Z"
 const place = (id: string, lat: number, lng: number): Place => ({
@@ -57,6 +57,11 @@ describe("trip view model", () => {
     expect(defaultDay(detail.days, new Date(2026, 11, 4))?.id).toBe("d2")
     expect(defaultDay(detail.days, new Date(2027, 0, 1))?.id).toBe("d1")
     expect(defaultDay([], new Date())).toBeUndefined()
+  })
+
+  it("capitalizes only the first letter of day labels", () => {
+    expect(dayLongLabel("2026-12-03")).toBe("Quinta-feira, 3 de dezembro")
+    expect(dayChipLabel("2026-12-03")).toMatch(/^Qui/)
   })
 
   it("formats trip dates", () => {

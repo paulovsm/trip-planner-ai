@@ -31,7 +31,8 @@ export function DaysPanel() {
 
   return (
     <div className="space-y-4 p-4">
-      <div className="-mx-4 flex items-center gap-2 overflow-x-auto px-4 pb-1" role="tablist" aria-label="Dias">
+      <div className="-mx-4 flex items-center gap-2 overflow-x-auto px-4 pb-1">
+        <div className="flex items-center gap-2" role="tablist" aria-label="Dias">
         {detail.days.map((d) => {
           const active = d.id === selectedDay?.id
           return (
@@ -43,7 +44,7 @@ export function DaysPanel() {
               aria-selected={active}
               onClick={() => selectDay(d.id)}
               className={cn(
-                "min-h-11 shrink-0 rounded-full border px-4 text-sm font-medium capitalize",
+                "min-h-11 shrink-0 rounded-full border px-4 text-sm font-medium",
                 active ? "bg-primary text-primary-foreground border-primary" : "bg-background",
                 !active && isPastDay(d.date) && "text-muted-foreground",
               )}
@@ -52,6 +53,7 @@ export function DaysPanel() {
             </button>
           )
         })}
+        </div>
         <AddDayDialog compact />
       </div>
       {selectedDay && <DayCard key={selectedDay.id} day={selectedDay} />}

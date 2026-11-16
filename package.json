@@ -12,7 +12,8 @@
     "test:watch": "vitest --project unit",
     "test:int": "firebase emulators:exec --only firestore --project demo-tripplanner \"vitest run --project integration\"",
     "gpx:test-export": "tsx scripts/gpx-test-export.ts",
-    "ai:probe": "tsx scripts/ai-probe.ts"
+    "ai:probe": "tsx scripts/ai-probe.ts",
+    "e2e": "firebase emulators:exec --only firestore --project demo-tripplanner \"playwright test\""
   },
   "dependencies": {
     "@auth/firebase-adapter": "^2.11.3",
@@ -59,6 +60,8 @@
     "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.14.0",
+    "@playwright/test": "^1.65.1",
     "@tailwindcss/postcss": "^4",
     "@types/google.maps": "^3.66.10",
     "@types/node": "^22.20.5",

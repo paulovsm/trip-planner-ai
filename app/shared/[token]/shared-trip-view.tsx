@@ -2,7 +2,6 @@
 
 import { useMemo, useState } from "react"
 import { format, parseISO } from "date-fns"
-import { ptBR } from "date-fns/locale"
 import { Calendar as CalendarIcon, Layout, List as ListIcon, Map as MapIcon, MapPin } from "lucide-react"
 import { MapsProvider } from "@/components/map/maps-provider"
 import { TripMap, type MapPlace } from "@/components/map/trip-map"
@@ -12,6 +11,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { CATEGORY_LABELS } from "@/lib/domain/categories"
 import type { PublicTripDto } from "@/lib/domain/dto"
+import { dayLongLabel } from "@/lib/client/trip-view"
 import { cn } from "@/lib/utils"
 
 type ViewMode = "split" | "map" | "list"
@@ -108,9 +108,9 @@ export function SharedTripView({ trip }: { trip: PublicTripDto }) {
               <div className="space-y-6">
                 {trip.days.map((day) => (
                   <div key={day.date} className="space-y-3">
-                    <h3 className="font-semibold flex items-center gap-2 capitalize">
+                    <h3 className="font-semibold flex items-center gap-2">
                       <CalendarIcon className="h-4 w-4 text-muted-foreground" />
-                      {format(parseISO(day.date), "EEEE, d 'de' MMMM", { locale: ptBR })}
+                      {dayLongLabel(day.date)}
                     </h3>
                     <ol className="pl-4 border-l-2 border-muted space-y-4">
                       {day.stops.map((stop, i) => (

@@ -59,7 +59,7 @@ export function DayCard({ day, footer }: { day: Day; footer?: React.ReactNode })
     <section className="space-y-3" aria-label={dayLongLabel(day.date)}>
       <div className="flex items-start justify-between gap-2">
         <div>
-          <h2 className="text-lg font-semibold capitalize">{dayLongLabel(day.date)}</h2>
+          <h2 className="text-lg font-semibold">{dayLongLabel(day.date)}</h2>
           <p className="text-muted-foreground text-sm">
             {day.stops.length} {day.stops.length === 1 ? "parada" : "paradas"}
           </p>

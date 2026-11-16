@@ -109,7 +109,7 @@ export function StopRow({ dayId, stop, index }: { dayId: string; stop: Stop; ind
               <DropdownMenuLabel className="text-muted-foreground text-xs">Mover para</DropdownMenuLabel>
               {otherDays.map((d) => (
                 <DropdownMenuItem key={d.id} onSelect={() => editStop.mutate({ dayId, stopId: stop.id, toDayId: d.id })}>
-                  <CalendarArrowUp /> <span className="capitalize">{dayChipLabel(d.date)}</span>
+                  <CalendarArrowUp /> <span>{dayChipLabel(d.date)}</span>
                 </DropdownMenuItem>
               ))}
             </>

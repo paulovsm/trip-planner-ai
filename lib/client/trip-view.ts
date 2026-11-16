@@ -50,8 +50,12 @@ export function defaultDay(days: Day[], today = new Date()): Day | undefined {
 
 export const isPastDay = (date: string, today = new Date()) => isBefore(parseISO(date), startOfDay(today))
 
-export const dayChipLabel = (date: string) => format(parseISO(date), "EEE d/M", { locale: ptBR })
-export const dayLongLabel = (date: string) => format(parseISO(date), "EEEE, d 'de' MMMM", { locale: ptBR })
+const capitalizeFirst = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
+
+/** "Qui 3/12" */
+export const dayChipLabel = (date: string) => capitalizeFirst(format(parseISO(date), "EEE d/M", { locale: ptBR }))
+/** "Quinta-feira, 3 de dezembro" (only the first letter capitalized, as in Portuguese) */
+export const dayLongLabel = (date: string) => capitalizeFirst(format(parseISO(date), "EEEE, d 'de' MMMM", { locale: ptBR }))
 
 export function tripDatesLabel(start?: string, end?: string): string {
   if (!start) return "Datas a definir"

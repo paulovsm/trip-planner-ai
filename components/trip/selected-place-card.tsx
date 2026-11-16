@@ -45,7 +45,7 @@ export function SelectedPlaceCard({ className }: { className?: string }) {
         </Button>
         {selectedDay && !inDay && (
           <Button variant="outline" size="sm" onClick={() => addStop.mutate({ dayId: selectedDay.id, placeId: place.id })}>
-            <CalendarPlus /> <span className="capitalize">{dayChipLabel(selectedDay.date)}</span>
+            <CalendarPlus /> <span>{dayChipLabel(selectedDay.date)}</span>
           </Button>
         )}
         <Button asChild variant="ghost" size="sm">

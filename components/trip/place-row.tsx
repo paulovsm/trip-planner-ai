@@ -66,7 +66,7 @@ export function PlaceRow({ place }: { place: Place }) {
               <DropdownMenuLabel className="text-muted-foreground text-xs">Adicionar ao dia</DropdownMenuLabel>
               {detail.days.map((d) => (
                 <DropdownMenuItem key={d.id} onSelect={() => addStop.mutate({ dayId: d.id, placeId: place.id })}>
-                  <CalendarPlus /> <span className="capitalize">{dayChipLabel(d.date)}</span>
+                  <CalendarPlus /> <span>{dayChipLabel(d.date)}</span>
                 </DropdownMenuItem>
               ))}
               <DropdownMenuSeparator />
