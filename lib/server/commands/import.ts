@@ -70,12 +70,16 @@ export async function commitImport(
     const existingDays = (await tx.get(ref.collection("days"))).docs.map((d) => readDoc(Day, d))
     const now = nowIso()
 
-    const placeIds = input.places.map((place) => {
+    // Places are listed by createdAt; a strictly increasing timestamp per place keeps
+    // the document's order (identical timestamps would sort arbitrarily).
+    const baseMs = Date.parse(now)
+    const placeIds = input.places.map((place, i) => {
       const doc = ref.collection("places").doc()
+      const createdAt = new Date(baseMs + i).toISOString()
       tx.set(
         doc,
         toFirestore(
-          Place.parse({ ...place, id: doc.id, visited: false, source: "import", createdBy: user.id, createdAt: now, updatedAt: now }),
+          Place.parse({ ...place, id: doc.id, visited: false, source: "import", createdBy: user.id, createdAt, updatedAt: createdAt }),
         ),
       )
       return doc.id

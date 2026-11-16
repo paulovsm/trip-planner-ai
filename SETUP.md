@@ -11,7 +11,10 @@ Como obter as chaves, configurar o banco e rodar o projeto localmente e na Verce
 ## 2. Firestore
 
 1. No [Firebase Console](https://console.firebase.google.com/), abra o projeto e vá em **Firestore Database**.
-2. Crie um banco **nomeado** (ex.: `tripplanner`) em **modo de produção**. O app começou um esquema novo sem migração (ADR-0003); não reutilize o banco antigo.
+2. Crie o banco **nomeado** `tripplanner` (o `firebase.json` já aponta para ele). O app começou um esquema novo sem migração (ADR-0003); não reutilize o banco antigo. Pelo CLI (após `npx firebase login`):
+   ```bash
+   npx firebase firestore:databases:create tripplanner --location nam5 --delete-protection ENABLED --project <seu-project-id>
+   ```
 3. Em **Configurações do projeto → Contas de serviço → Gerar nova chave privada**, copie do JSON para o `.env`:
    - `project_id` → `FIREBASE_PROJECT_ID`
    - `client_email` → `FIREBASE_CLIENT_EMAIL`
@@ -21,7 +24,6 @@ Como obter as chaves, configurar o banco e rodar o projeto localmente e na Verce
    ```bash
    npx firebase deploy --only firestore --project <seu-project-id>
    ```
-   Para um banco nomeado, acrescente `"database": "tripplanner"` ao objeto `firestore` do `firebase.json` antes do deploy.
 
 ## 3. Google Cloud
 
