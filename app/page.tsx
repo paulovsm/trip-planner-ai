@@ -16,7 +16,7 @@ export default function Home() {
               <Sparkles className="w-3 h-3 mr-1" />
               Nova IA de Planejamento
             </div>
-            <h1 className="text-4xl font-extrabold tracking-tight lg:text-7xl bg-clip-text text-transparent bg-gradient-to-r from-primary via-purple-500 to-blue-600 max-w-4xl">
+            <h1 className="text-4xl font-extrabold tracking-tight lg:text-7xl bg-clip-text text-transparent bg-gradient-to-r from-primary via-cyan-600 to-sky-500 max-w-4xl">
               Sua próxima aventura, planejada com perfeição.
             </h1>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
@@ -24,16 +24,14 @@ export default function Home() {
               Deixe nossa IA organizar seus dias para você aproveitar cada momento.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 w-full justify-center">
-              <Link href="/trips/new">
-                <Button size="lg" className="w-full sm:w-auto h-12 px-8 text-lg gap-2">
-                  Começar Agora <ArrowRight className="w-4 h-4" />
-                </Button>
-              </Link>
-              <Link href="#features">
-                <Button variant="outline" size="lg" className="w-full sm:w-auto h-12 px-8 text-lg">
-                  Como Funciona
-                </Button>
-              </Link>
+              <Button asChild size="lg" className="w-full sm:w-auto h-12 px-8 text-lg gap-2">
+                <Link href="/trips">
+                  Começar <ArrowRight className="w-4 h-4" />
+                </Link>
+              </Button>
+              <Button asChild variant="outline" size="lg" className="w-full sm:w-auto h-12 px-8 text-lg">
+                <Link href="#features">Como funciona</Link>
+              </Button>
             </div>
           </div>
         </div>
@@ -103,11 +101,6 @@ export default function Home() {
             <div className="relative h-[400px] lg:h-[600px] bg-muted rounded-2xl border shadow-xl overflow-hidden flex items-center justify-center">
               <div className="absolute inset-0 bg-gradient-to-br from-blue-100 to-purple-100 dark:from-blue-950 dark:to-purple-950 opacity-50" />
               <Globe2 className="w-64 h-64 text-muted-foreground/20" />
-              <div className="absolute inset-0 flex items-center justify-center">
-                <p className="text-sm text-muted-foreground font-medium bg-background/80 backdrop-blur px-4 py-2 rounded-full border shadow-sm">
-                  Preview da Interface
-                </p>
-              </div>
             </div>
           </div>
         </div>
@@ -120,13 +113,11 @@ export default function Home() {
             Pronto para sua próxima viagem?
           </h2>
           <p className="text-primary-foreground/80 text-lg max-w-2xl mx-auto mb-8">
-            Junte-se a milhares de viajantes que planejam roteiros inteligentes e sem estresse.
+            Monte o roteiro com quem viaja com você e leve o percurso de cada dia no celular e no relógio.
           </p>
-          <Link href="/trips/new">
-            <Button size="lg" variant="secondary" className="h-12 px-8 text-lg">
-              Criar Roteiro Grátis
-            </Button>
-          </Link>
+          <Button asChild size="lg" variant="secondary" className="h-12 px-8 text-lg">
+            <Link href="/trips">Abrir minhas viagens</Link>
+          </Button>
         </div>
       </section>
 
@@ -134,13 +125,8 @@ export default function Home() {
       <footer className="py-8 border-t">
         <div className="container px-4 md:px-6 mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
           <p className="text-sm text-muted-foreground">
-            © 2024 TripPlanner. Todos os direitos reservados.
+            © {new Date().getFullYear()} TripPlanner · uso pessoal e familiar
           </p>
-          <div className="flex gap-4 text-sm text-muted-foreground">
-            <Link href="#" className="hover:underline">Termos</Link>
-            <Link href="#" className="hover:underline">Privacidade</Link>
-            <Link href="#" className="hover:underline">Contato</Link>
-          </div>
         </div>
       </footer>
     </div>

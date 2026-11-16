@@ -1,115 +1,63 @@
 "use client"
 
 import Link from "next/link"
-import { useSession, signIn, signOut } from "next-auth/react"
+import { signIn, useSession } from "next-auth/react"
+import { LogOut, MapPin, Map as MapIcon } from "lucide-react"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { MapPin, Menu } from "lucide-react"
-import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet"
-import { useState } from "react"
+import { useSignOut } from "@/hooks/use-sign-out"
 
+/** Top bar for list/landing pages (the trip screen has its own header). */
 export function Navbar() {
   const { data: session } = useSession()
-  const [isOpen, setIsOpen] = useState(false)
+  const signOut = useSignOut()
 
   return (
-    <header className="border-b bg-background sticky top-0 z-50">
-      <div className="container mx-auto flex h-16 items-center justify-between px-4">
-        <Link href="/" className="flex items-center gap-2 font-bold text-xl text-primary">
-          <MapPin className="h-6 w-6" />
+    <header className="bg-background/95 supports-[backdrop-filter]:bg-background/80 sticky top-0 z-40 border-b backdrop-blur pt-safe">
+      <div className="container mx-auto flex h-14 items-center justify-between gap-2 px-4">
+        <Link href={session ? "/trips" : "/"} className="text-primary flex items-center gap-2 text-lg font-bold">
+          <MapPin className="size-5" aria-hidden />
           TripPlanner
         </Link>
-
-        {/* Desktop Navigation */}
-        <nav className="hidden md:flex items-center gap-4">
-          {session ? (
-            <div className="flex items-center gap-4">
-              <Link href="/trips" className="text-sm font-medium hover:underline">
-                Minhas Viagens
-              </Link>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                    <Avatar className="h-8 w-8">
-                      <AvatarImage src={session.user?.image || ""} alt={session.user?.name || ""} />
-                      <AvatarFallback>{session.user?.name?.[0]}</AvatarFallback>
-                    </Avatar>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => signOut()}>
-                    Sair
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          ) : (
-            <Button onClick={() => signIn()}>Entrar</Button>
-          )}
-        </nav>
-
-        {/* Mobile Navigation */}
-        <div className="md:hidden">
-          <Sheet open={isOpen} onOpenChange={setIsOpen}>
-            <SheetTrigger asChild>
-              <Button variant="ghost" size="icon">
-                <Menu className="h-6 w-6" />
-                <span className="sr-only">Menu</span>
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="right">
-              <SheetHeader>
-                <SheetTitle>Menu</SheetTitle>
-              </SheetHeader>
-              <div className="flex flex-col gap-4 mt-8">
-                {session ? (
-                  <>
-                    <div className="flex items-center gap-2 mb-4">
-                      <Avatar className="h-8 w-8">
-                        <AvatarImage src={session.user?.image || ""} alt={session.user?.name || ""} />
-                        <AvatarFallback>{session.user?.name?.[0]}</AvatarFallback>
-                      </Avatar>
-                      <span className="font-medium">{session.user?.name}</span>
-                    </div>
-                    <Link 
-                      href="/trips" 
-                      className="text-lg font-medium hover:text-primary"
-                      onClick={() => setIsOpen(false)}
-                    >
-                      Minhas Viagens
-                    </Link>
-                    <Button 
-                      variant="outline" 
-                      onClick={() => {
-                        signOut()
-                        setIsOpen(false)
-                      }}
-                      className="w-full justify-start"
-                    >
-                      Sair
-                    </Button>
-                  </>
-                ) : (
-                  <Button 
-                    onClick={() => {
-                      signIn()
-                      setIsOpen(false)
-                    }}
-                    className="w-full"
-                  >
-                    Entrar
-                  </Button>
-                )}
-              </div>
-            </SheetContent>
-          </Sheet>
-        </div>
+        {session ? (
+          <div className="flex items-center gap-1">
+            <Button asChild variant="ghost" className="hidden sm:inline-flex">
+              <Link href="/trips">Minhas viagens</Link>
+            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="rounded-full" aria-label="Conta">
+                  <Avatar className="size-8">
+                    <AvatarImage src={session.user?.image || ""} alt="" />
+                    <AvatarFallback>{session.user?.name?.[0] ?? "?"}</AvatarFallback>
+                  </Avatar>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="min-w-56">
+                <DropdownMenuLabel className="truncate font-normal">{session.user?.email}</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link href="/trips">
+                    <MapIcon /> Minhas viagens
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={signOut}>
+                  <LogOut /> Sair
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        ) : (
+          <Button onClick={() => signIn(undefined, { callbackUrl: "/trips" })}>Entrar</Button>
+        )}
       </div>
     </header>
   )

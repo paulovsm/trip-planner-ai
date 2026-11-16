@@ -51,7 +51,9 @@ function useTripCache(tripId: string) {
 }
 
 function reportError(err: unknown, fallback: string) {
-  if (err instanceof ApiError && err.status === 409) {
+  if (typeof navigator !== "undefined" && !navigator.onLine) {
+    toast.error("Sem conexão: essa alteração precisa de internet. Offline você pode consultar a viagem e marcar lugares como visitados.")
+  } else if (err instanceof ApiError && err.status === 409) {
     toast.warning("Alguém editou este dia ao mesmo tempo. A lista foi atualizada.")
   } else {
     toast.error(errorMessage(err, fallback))
