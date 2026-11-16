@@ -167,3 +167,28 @@ test.describe("import", () => {
     await expect(page.getByText(/Formato não suportado/)).toBeVisible()
   })
 })
+
+test.describe("assistant", () => {
+  test("streams an answer and applies a proposal only after confirmation", async ({ page }, info) => {
+    const { tripId, placeIds } = await seedTrip(page.request, "Assistente E2E")
+    await page.goto(`/trips/${tripId}?tab=ia`)
+    await page.getByLabel("Mensagem para o assistente").fill("Marque a torre como visitada")
+    await page.getByRole("button", { name: "Enviar" }).click()
+
+    const card = page.getByRole("group", { name: "Proposta: Marcar Torre de Belém como visitado" })
+    await expect(card).toBeVisible()
+    await expect(page.getByText("Deixei a proposta abaixo para você confirmar.")).toBeVisible()
+    const visited = async () =>
+      (await (await page.request.get(`/api/trips/${tripId}`)).json()).places.find((p: { id: string }) => p.id === placeIds[0]).visited
+    expect(await visited()).toBe(false) // nothing written yet
+
+    await card.getByRole("button", { name: "Aplicar" }).click()
+    await expect(card.getByText("Aplicada")).toBeVisible()
+    await expect.poll(visited).toBe(true)
+    await page.screenshot({ path: `test-results/screens/${info.project.name}-assistant.png` })
+
+    // History (and the decided proposal) survive a reload.
+    await page.reload()
+    await expect(page.getByRole("group", { name: /Proposta: Marcar Torre de Belém/ }).getByText("Aplicada")).toBeVisible()
+  })
+})

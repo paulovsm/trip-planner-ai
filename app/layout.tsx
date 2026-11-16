@@ -31,7 +31,8 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       <body>
         <Providers>
           {children}
-          <Toaster position="top-center" richColors closeButton />
+          {/* Below the floating trip header / navbar */}
+          <Toaster position="top-center" richColors closeButton offset={{ top: 80 }} mobileOffset={{ top: 84 }} />
         </Providers>
       </body>
     </html>

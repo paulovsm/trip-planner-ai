@@ -71,6 +71,7 @@ export function ChatMessage({ role, content, sources }: ChatMessageProps) {
       </div>
       <div className={cn(
         "rounded-lg px-4 py-2 max-w-[80%] text-sm relative group",
+        !isUser && "pr-10",
         isUser ? "bg-primary text-primary-foreground" : "bg-muted"
       )}>
         {isUser ? (

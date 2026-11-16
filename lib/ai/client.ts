@@ -146,3 +146,84 @@ function log(task: AiTask, model: string, started: number, fallback: boolean, re
       `in=${u?.promptTokenCount ?? "?"} out=${u?.candidatesTokenCount ?? "?"} thoughts=${u?.thoughtsTokenCount ?? "?"}`,
   )
 }
+
+// ---------- Streaming (agentic chat) ----------
+
+export type StreamResult = { model: string; usedFallback: boolean; stream: AsyncGenerator<GenerateContentResponse> }
+
+/**
+ * Streams a model turn. Falls back to the secondary model only if the primary fails
+ * before streaming starts (an HTTP error on the initial request).
+ */
+export async function generateStream(
+  task: AiTask,
+  contents: Content[],
+  config: Omit<GenerateContentConfig, "abortSignal" | "thinkingConfig" | "temperature" | "topP" | "topK"> = {},
+  signal?: AbortSignal,
+): Promise<StreamResult> {
+  if (process.env.AI_FAKE === "1") return { model: "fake", usedFallback: false, stream: fakeAgentStream(contents) }
+
+  const cfg = taskConfig(task)
+  const call = (model: string, body: Content[]) =>
+    getClient().models.generateContentStream({
+      model,
+      contents: body,
+      config: {
+        ...config,
+        thinkingConfig: { thinkingLevel: cfg.thinkingLevel },
+        abortSignal: signal ? AbortSignal.any([signal, AbortSignal.timeout(cfg.timeoutMs)]) : AbortSignal.timeout(cfg.timeoutMs),
+      },
+    })
+  try {
+    return { model: cfg.model, usedFallback: false, stream: await call(cfg.model, contents) }
+  } catch (err) {
+    if (!isRetriable(err) || cfg.model === cfg.fallbackModel || signal?.aborted) throw err
+    console.warn(`[ai] ${task}: ${cfg.model} failed (${describe(err)}); falling back to ${cfg.fallbackModel}`)
+    try {
+      return { model: cfg.fallbackModel, usedFallback: true, stream: await call(cfg.fallbackModel, contents) }
+    } catch (fallbackErr) {
+      if (!isSignatureError(fallbackErr)) throw fallbackErr
+      return { model: cfg.fallbackModel, usedFallback: true, stream: await call(cfg.fallbackModel, withDummySignatures(contents)) }
+    }
+  }
+}
+
+const response = (parts: NonNullable<Content["parts"]>) =>
+  ({ candidates: [{ content: { role: "model", parts } }] }) as unknown as GenerateContentResponse
+
+/**
+ * Deterministic agent for tests (AI_FAKE=1):
+ * - "...visitad..." → proposeMarkVisited(P1)
+ * - "...adicion..." → searchPlaces(text) → proposeAddStop(first result, 2026-12-03)
+ * - after a proposal → a short confirmation; otherwise echoes the message.
+ */
+async function* fakeAgentStream(contents: Content[]): AsyncGenerator<GenerateContentResponse> {
+  const last = contents.at(-1)
+  const fnResponse = last?.parts?.find((p) => p.functionResponse)?.functionResponse
+  const userText = [...contents].reverse().find((c) => c.role === "user" && c.parts?.some((p) => p.text))?.parts?.map((p) => p.text).join(" ") ?? ""
+
+  if (fnResponse?.name === "searchPlaces") {
+    const results = (fnResponse.response as { results?: { googlePlaceId: string }[] })?.results ?? []
+    yield response(
+      results[0]
+        ? [{ functionCall: { name: "proposeAddStop", args: { date: "2026-12-03", googlePlaceId: results[0].googlePlaceId, time: "10:00" } } }]
+        : [{ text: "Não encontrei esse lugar." }],
+    )
+    return
+  }
+  if (fnResponse) {
+    yield response([{ text: "Pronto! " }])
+    yield response([{ text: "Deixei a proposta abaixo para você confirmar." }])
+    return
+  }
+  if (/visitad/i.test(userText)) {
+    yield response([{ functionCall: { name: "proposeMarkVisited", args: { placeRef: "P1", visited: true } } }])
+    return
+  }
+  if (/adicion/i.test(userText)) {
+    yield response([{ functionCall: { name: "searchPlaces", args: { query: "Pastéis de Belém, Lisboa" } } }])
+    return
+  }
+  yield response([{ text: "Resposta de teste para: " }])
+  yield response([{ text: userText.slice(0, 80) }])
+}

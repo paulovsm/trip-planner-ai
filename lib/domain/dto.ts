@@ -1,3 +1,4 @@
+import type { ProposalView } from "./proposals"
 import type { Day, Place, Role, ShareLink, Stop, Trip, TravelMode } from "./schemas"
 
 // Shapes returned by the API (shared by server and client).
@@ -47,6 +48,7 @@ export type ChatMessageView = {
   role: "user" | "model"
   text: string
   sources?: { title?: string; uri?: string }[]
+  proposals?: ProposalView[]
   createdAt: string
 }
 

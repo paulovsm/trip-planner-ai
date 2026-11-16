@@ -1,50 +1,54 @@
-import { useState, useRef } from "react";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { SendHorizontal } from "lucide-react";
+"use client"
 
-interface ChatInputProps {
-  onSend: (message: string) => void;
-  isLoading: boolean;
-}
+import { useState } from "react"
+import { SendHorizontal, Square } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Textarea } from "@/components/ui/textarea"
 
-export function ChatInput({ onSend, isLoading }: ChatInputProps) {
-  const [input, setInput] = useState("");
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+export function ChatInput({ onSend, onStop, isLoading }: { onSend: (message: string) => void; onStop?: () => void; isLoading: boolean }) {
+  const [input, setInput] = useState("")
 
-  const handleSend = () => {
-    if (input.trim() && !isLoading) {
-      onSend(input);
-      setInput("");
-    }
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
-    }
-  };
+  const send = () => {
+    if (!input.trim() || isLoading) return
+    onSend(input.trim())
+    setInput("")
+  }
 
   return (
-    <div className="flex gap-2 items-end p-4 border-t bg-background">
+    <form
+      className="bg-background flex items-end gap-2 border-t p-3"
+      onSubmit={(e) => {
+        e.preventDefault()
+        send()
+      }}
+    >
       <Textarea
-        ref={textareaRef}
         value={input}
         onChange={(e) => setInput(e.target.value)}
-        onKeyDown={handleKeyDown}
-        placeholder="Pergunte sobre sua viagem..."
-        className="min-h-[50px] max-h-[150px] resize-none"
-        disabled={isLoading}
+        onKeyDown={(e) => {
+          // Enter sends on desktop; on touch keyboards Enter inserts a new line.
+          const coarse = window.matchMedia("(pointer: coarse)").matches
+          if (e.key === "Enter" && !e.shiftKey && !coarse) {
+            e.preventDefault()
+            send()
+          }
+        }}
+        placeholder="Peça dicas ou alterações no roteiro…"
+        aria-label="Mensagem para o assistente"
+        enterKeyHint="send"
+        maxLength={2000}
+        rows={1}
+        className="max-h-[150px] min-h-11 resize-none text-base md:text-sm"
       />
-      <Button 
-        onClick={handleSend} 
-        disabled={!input.trim() || isLoading}
-        size="icon"
-        className="h-[50px] w-[50px]"
-      >
-        <SendHorizontal className="w-5 h-5" />
-      </Button>
-    </div>
-  );
+      {isLoading ? (
+        <Button type="button" size="icon" variant="secondary" onClick={onStop} aria-label="Parar resposta" className="size-11 shrink-0">
+          <Square className="size-4" />
+        </Button>
+      ) : (
+        <Button type="submit" size="icon" disabled={!input.trim()} aria-label="Enviar" className="size-11 shrink-0">
+          <SendHorizontal className="size-5" />
+        </Button>
+      )}
+    </form>
+  )
 }

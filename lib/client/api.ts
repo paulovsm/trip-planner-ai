@@ -1,6 +1,14 @@
 import type { ChatMessageView, CreatedShareLink, MemberView, ShareLinkView, TripDetail, TripSummary } from "@/lib/domain/dto"
 export type { ChatMessageView }
+
+export type ChatEvent =
+  | { type: "status"; text: string }
+  | { type: "text"; delta: string }
+  | { type: "proposal"; proposal: ProposalView }
+  | { type: "done"; message: ChatMessageView }
+  | { type: "error"; message: string }
 import type { ImportPreview } from "@/lib/domain/import"
+import type { ProposalView } from "@/lib/domain/proposals"
 import type {
   AddStopInput,
   CreateDayInput,
@@ -97,8 +105,33 @@ export const api = {
   },
   chat: {
     history: (tripId: string) => request<ChatMessageView[]>("GET", `${t(tripId)}/chat`),
-    send: (tripId: string, message: string) => request<ChatMessageView>("POST", `${t(tripId)}/chat`, { message }),
+    /** Streams NDJSON events; resolves when the stream ends. */
+    stream: async (tripId: string, message: string, onEvent: (e: ChatEvent) => void, signal?: AbortSignal) => {
+      const res = await fetch(`${t(tripId)}/chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message }),
+        signal,
+      })
+      if (!res.ok || !res.body) {
+        const data = await res.json().catch(() => null)
+        throw new ApiError(res.status, data?.error?.code ?? "UNKNOWN", data?.error?.message ?? "O assistente não respondeu.")
+      }
+      const reader = res.body.pipeThrough(new TextDecoderStream()).getReader()
+      let buffer = ""
+      for (;;) {
+        const { value, done } = await reader.read()
+        if (done) break
+        buffer += value
+        const lines = buffer.split("\n")
+        buffer = lines.pop() ?? ""
+        for (const line of lines) if (line.trim()) onEvent(JSON.parse(line) as ChatEvent)
+      }
+      if (buffer.trim()) onEvent(JSON.parse(buffer) as ChatEvent)
+    },
     clear: (tripId: string) => request<void>("DELETE", `${t(tripId)}/chat`),
+    decide: (tripId: string, proposalId: string, decision: "apply" | "discard") =>
+      request<ProposalView>("POST", `${t(tripId)}/chat/proposals/${encodeURIComponent(proposalId)}`, { decision }),
   },
   import: {
     extract: (file: File) => {

@@ -35,7 +35,7 @@ export function TripShell({ tripId }: { tripId: string }) {
   const router = useRouter()
   const pathname = usePathname()
   const params = useSearchParams()
-  const [snap, setSnap] = useState<SnapIndex>(1)
+  const [snap, setSnap] = useState<SnapIndex>(() => (params.get("tab") === "ia" ? 2 : 1))
   const [selectedPlaceId, setSelectedPlaceId] = useState<string | null>(null)
 
   const tab: TripTab = TAB_IDS.includes(params.get("tab") as TripTab) ? (params.get("tab") as TripTab) : "roteiro"
@@ -97,7 +97,7 @@ export function TripShell({ tripId }: { tripId: string }) {
     roteiro: <DaysPanel />,
     places: <PlacesPanel />,
     ia: (
-      <div className="flex h-full min-h-[60dvh] flex-col">
+      <div className="flex h-full flex-col">
         <ChatPanel tripId={tripId} />
       </div>
     ),
@@ -167,7 +167,9 @@ export function TripShell({ tripId }: { tripId: string }) {
               active={tab}
               onChange={(t) => {
                 ctx.setTab(t)
-                if (snap === 0) setSnap(1)
+                // The chat needs room; other sections open at half height.
+                if (t === "ia") setSnap(2)
+                else if (snap === 0) setSnap(1)
               }}
             />
           </div>
