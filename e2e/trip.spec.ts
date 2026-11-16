@@ -95,3 +95,41 @@ test.describe("trip screen", () => {
     }
   })
 })
+
+test.describe("routes and GPX", () => {
+  test("computes the route, optimizes with undo, and downloads a GPX", async ({ page }, info) => {
+    const { tripId, dayId } = await seedTrip(page.request)
+    // A 4th stop so the (fake) optimizer has two intermediates to swap.
+    const extra = await (
+      await page.request.post(`/api/trips/${tripId}/places`, {
+        data: { name: "Time Out Market", category: "gastronomia", city: "Lisboa", location: { lat: 38.707, lng: -9.146 } },
+      })
+    ).json()
+    await page.request.post(`/api/trips/${tripId}/days/${dayId}/stops`, { data: { placeId: extra.id } })
+    await page.goto(`/trips/${tripId}?day=${dayId}`)
+    await expect(page.getByText("Percurso ainda não calculado")).toBeVisible()
+    await page.getByRole("button", { name: "Calcular", exact: true }).click()
+    await expect(page.getByText(/\d+(,\d)? km · \d+ (min|h)/)).toBeVisible()
+    await expect(page.getByText(/chega \d\d:\d\d/).first()).toBeVisible()
+
+    const original = ["Torre de Belém", "Mosteiro dos Jerónimos", "LX Factory", "Time Out Market"]
+    await page.getByRole("button", { name: "Otimizar ordem" }).click()
+    await expect(page.getByText("Ordem otimizada para o menor percurso.")).toBeVisible()
+    await expect(names(page)).toHaveText(["Torre de Belém", "LX Factory", "Mosteiro dos Jerónimos", "Time Out Market"])
+    await page.getByRole("button", { name: "Desfazer" }).click()
+    await expect(names(page)).toHaveText(original)
+    await expect(page.getByText(/\d+(,\d)? km · \d+ (min|h)/)).toBeVisible() // recomputed after undo
+
+    await page.getByRole("button", { name: "GPX" }).click()
+    // Wait for any Undo-triggered recompute to settle before exporting.
+    const download = page.waitForEvent("download")
+    await page.getByRole("button", { name: /Baixar \.gpx/ }).click()
+    const file = await download
+    expect(file.suggestedFilename()).toBe("lisboa-e2e-dia-1-2026-12-03.gpx")
+    const xml = await (await import("node:fs/promises")).readFile((await file.path())!, "utf8")
+    expect(xml).toContain("<name>1. Torre de Belém</name>")
+    expect(xml).toContain("<type>walking</type>")
+    expect((xml.match(/<trkpt /g) ?? []).length).toBeGreaterThan(50)
+    await page.screenshot({ path: `test-results/screens/${info.project.name}-gpx.png` })
+  })
+})

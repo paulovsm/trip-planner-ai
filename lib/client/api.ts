@@ -8,6 +8,7 @@ import type {
   CreateTripInput,
   Day,
   Place,
+  Route,
   Trip,
   UpdateDayInput,
   UpdatePlaceInput,
@@ -81,6 +82,11 @@ export const api = {
       request<Day>("DELETE", `${d(tripId, dayId)}/stops/${encodeURIComponent(stopId)}`),
     reorder: (tripId: string, dayId: string, stopIds: string[], expectedVersion: number) =>
       request<Day>("PUT", `${d(tripId, dayId)}/order`, { stopIds, expectedVersion }),
+    computeRoute: (tripId: string, dayId: string) => request<Day>("POST", `${d(tripId, dayId)}/route`),
+    optimize: (tripId: string, dayId: string, expectedVersion: number) =>
+      request<{ day: Day; previousStopIds: string[] }>("POST", `${d(tripId, dayId)}/optimize`, { expectedVersion }),
+    exportRoute: (tripId: string, dayId: string, mode: "WALK" | "BICYCLE") =>
+      request<Route>("POST", `${d(tripId, dayId)}/export-route`, { mode }),
   },
   shareLinks: {
     list: (tripId: string) => request<ShareLinkView[]>("GET", `${t(tripId)}/share-links`),

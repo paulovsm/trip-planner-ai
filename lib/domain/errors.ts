@@ -7,6 +7,7 @@ export type DomainErrorCode =
   | "RATE_LIMITED"
   | "PAYLOAD_TOO_LARGE"
   | "UNSUPPORTED_MEDIA_TYPE"
+  | "UPSTREAM"
 
 const STATUS: Record<DomainErrorCode, number> = {
   UNAUTHORIZED: 401,
@@ -17,6 +18,7 @@ const STATUS: Record<DomainErrorCode, number> = {
   RATE_LIMITED: 429,
   PAYLOAD_TOO_LARGE: 413,
   UNSUPPORTED_MEDIA_TYPE: 415,
+  UPSTREAM: 502,
 }
 
 /** Expected, user-facing failure. Anything else is treated as a 500. */

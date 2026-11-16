@@ -30,12 +30,14 @@ Como obter as chaves, configurar o banco e rodar o projeto localmente e na Verce
 ### APIs (APIs e serviços → Biblioteca)
 - **Maps JavaScript API**
 - **Geocoding API** (localização de lugares no navegador)
-- **Directions API** (traçado no navegador; substituída pela Routes API na fase F3)
-- **Places API (New)** (busca de lugares, a partir da fase F2)
+- **Places API (New)** (busca de lugares no navegador)
+- **Routes API** (percursos, Otimizar e GPX — chamada só pelo servidor)
 - **Generative Language API** (Gemini) — ou gere a chave direto no [Google AI Studio](https://aistudio.google.com/)
 
 ### Chaves
 - **`NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`** (navegador): restrinja por **referenciador HTTP** (`http://localhost:3000/*`, `https://<seu-dominio>/*`) e às APIs acima de Maps. Ela fica pública no bundle; a restrição é a única proteção.
+- **`GOOGLE_MAPS_SERVER_KEY`** (servidor): restrinja **por API** à Routes API (sem restrição de referenciador, pois é chamada do servidor). Nunca use `NEXT_PUBLIC_` nela. Sem ela, "Calcular percurso", "Otimizar" e o GPX mostram um aviso; para desenvolvimento local use `MAPS_FAKE=1` (linhas retas).
+- **`NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID`** (opcional): um Map ID do Cloud-based Map Styling para os marcadores avançados e o modo escuro do mapa. Sem ele usa-se `DEMO_MAP_ID`.
 - **`GEMINI_API_KEY`**: só no servidor. Nunca use `NEXT_PUBLIC_` nela.
 
 ### Login com Google (Auth.js v5)
@@ -60,6 +62,7 @@ npm run lint
 npm run typecheck
 npm test               # testes unitários
 npm run test:int       # integração no emulador do Firestore (requer Java 21)
+npm run e2e            # Playwright (celular + desktop) contra o build de produção e o emulador
 npm run build
 ```
 

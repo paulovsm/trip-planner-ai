@@ -15,14 +15,29 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { dayChipLabel, googleMapsPlaceUrl } from "@/lib/client/trip-view"
 import { CATEGORY_LABELS } from "@/lib/domain/categories"
-import type { Stop } from "@/lib/domain/schemas"
+import { formatDistance, formatDuration, type StopEta } from "@/lib/domain/route"
+import type { Stop, TravelMode } from "@/lib/domain/schemas"
 import { cn } from "@/lib/utils"
 import { useEditStop, useRemoveStop, useSetVisited } from "@/hooks/use-trip-mutations"
 import { CategoryBadge } from "./category-badge"
 import { StopEditor } from "./stop-editor"
 import { useTrip } from "./trip-context"
 
-export function StopRow({ dayId, stop, index }: { dayId: string; stop: Stop; index: number }) {
+const MODE_VERB: Record<TravelMode, string> = { WALK: "a pé", BICYCLE: "de bike", DRIVE: "de carro", TRANSIT: "de transporte" }
+
+export function StopRow({
+  dayId,
+  stop,
+  index,
+  eta,
+  mode,
+}: {
+  dayId: string
+  stop: Stop
+  index: number
+  eta?: StopEta
+  mode: TravelMode
+}) {
   const { tripId, detail, placesById, selectPlace, selectedPlaceId } = useTrip()
   const place = placesById.get(stop.placeId)
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({
@@ -35,7 +50,13 @@ export function StopRow({ dayId, stop, index }: { dayId: string; stop: Stop; ind
 
   if (!place) return null
   const otherDays = detail.days.filter((d) => d.id !== dayId)
-  const meta = [stop.time, stop.durationMin ? `${stop.durationMin} min` : null].filter(Boolean).join(" · ")
+  const meta = [
+    eta ? `chega ${eta.eta}${eta.nextDay ? " (+1 dia)" : ""}` : stop.time,
+    eta && stop.time && eta.eta !== stop.time ? `plano ${stop.time}` : null,
+    stop.durationMin ? `fica ${stop.durationMin} min` : null,
+  ]
+    .filter(Boolean)
+    .join(" · ")
 
   return (
     <li
@@ -70,13 +91,19 @@ export function StopRow({ dayId, stop, index }: { dayId: string; stop: Stop; ind
           <span className="text-muted-foreground flex items-center gap-1 truncate text-xs">
             {meta ? (
               <>
-                <Clock className="size-3" /> {meta}
+                <Clock className={cn("size-3", eta?.late && "text-destructive")} /> {meta}
+                {eta?.late && <span className="text-destructive"> · atrasado</span>}
               </>
             ) : (
               CATEGORY_LABELS[place.category]
             )}
             {stop.notes && <NotebookPen className="ml-1 size-3" aria-label="Tem notas" />}
           </span>
+          {eta?.legBefore && (
+            <span className="text-muted-foreground block text-[11px]">
+              {formatDuration(eta.legBefore.durationSec)} {MODE_VERB[mode]} · {formatDistance(eta.legBefore.distanceMeters)} desde a anterior
+            </span>
+          )}
         </span>
       </button>
       <Button

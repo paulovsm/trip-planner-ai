@@ -18,7 +18,9 @@ import { dayLongLabel, dayPath, googleMapsDayUrl } from "@/lib/client/trip-view"
 import type { Day, TravelMode } from "@/lib/domain/schemas"
 import { cn } from "@/lib/utils"
 import { useDeleteDay, useEditStop, useUpdateDay } from "@/hooks/use-trip-mutations"
+import { computeEtas } from "@/lib/domain/route"
 import { AddStopPicker } from "./add-stop-picker"
+import { RouteBar } from "./route-bar"
 import { StopRow } from "./stop-row"
 import { useTrip } from "./trip-context"
 
@@ -35,6 +37,8 @@ export function DayCard({ day, footer }: { day: Day; footer?: React.ReactNode })
   const deleteDay = useDeleteDay(tripId)
   const editStop = useEditStop(tripId)
   const mapsUrl = googleMapsDayUrl(dayPath(detail, day), day.travelMode)
+  const etas = computeEtas(day)
+  const dayNumber = detail.days.findIndex((d) => d.id === day.id) + 1
 
   // Long-press to drag on touch (so the list still scrolls), small distance for mouse,
   // and full keyboard support (space to lift, arrows to move).
@@ -109,6 +113,8 @@ export function DayCard({ day, footer }: { day: Day; footer?: React.ReactNode })
         ))}
       </div>
 
+      <RouteBar day={day} dayNumber={dayNumber} />
+
       {day.stops.length === 0 ? (
         <p className="text-muted-foreground rounded-xl border-2 border-dashed p-6 text-center text-sm">
           Nenhuma parada neste dia ainda.
@@ -133,7 +139,7 @@ export function DayCard({ day, footer }: { day: Day; footer?: React.ReactNode })
           <SortableContext items={day.stops.map((s) => s.id)} strategy={verticalListSortingStrategy}>
             <ol className="space-y-2">
               {day.stops.map((stop, i) => (
-                <StopRow key={stop.id} dayId={day.id} stop={stop} index={i} />
+                <StopRow key={stop.id} dayId={day.id} stop={stop} index={i} eta={etas?.[i]} mode={day.travelMode} />
               ))}
             </ol>
           </SortableContext>

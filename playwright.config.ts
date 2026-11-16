@@ -32,6 +32,7 @@ export default defineConfig({
       FIRESTORE_DATABASE_ID: "",
       FIRESTORE_EMULATOR_HOST: process.env.FIRESTORE_EMULATOR_HOST ?? "127.0.0.1:8080",
       AI_FAKE: "1",
+      MAPS_FAKE: "1",
       AUTH_TRUST_HOST: "true",
       AUTH_URL: BASE_URL,
       NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: "",

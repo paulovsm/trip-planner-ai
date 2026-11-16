@@ -275,3 +275,43 @@ export function useReorderStops(tripId: string) {
     onSettled: () => cache.invalidate(),
   })
 }
+
+// ---------- Routes ----------
+
+export function useComputeRoute(tripId: string) {
+  const cache = useTripCache(tripId)
+  return useMutation<Day, unknown, string>({
+    mutationFn: (dayId) => api.days.computeRoute(tripId, dayId),
+    onSuccess: (day) => cache.replaceDays([day]),
+    onError: (err) => reportError(err, "Erro ao calcular o percurso."),
+  })
+}
+
+/** Optimize with an Undo action that restores the previous order (and recomputes the Route). */
+export function useOptimizeDay(tripId: string) {
+  const cache = useTripCache(tripId)
+  const reorder = useReorderStops(tripId)
+  const compute = useComputeRoute(tripId)
+  return useMutation<{ day: Day; previousStopIds: string[] }, unknown, { dayId: string; expectedVersion: number }>({
+    mutationFn: ({ dayId, expectedVersion }) => api.days.optimize(tripId, dayId, expectedVersion),
+    onSuccess: ({ day, previousStopIds }) => {
+      cache.replaceDays([day])
+      const changed = previousStopIds.join(",") !== day.stops.map((s) => s.id).join(",")
+      toast.success(changed ? "Ordem otimizada para o menor percurso." : "A ordem atual já é a melhor.", {
+        action: changed
+          ? {
+              label: "Desfazer",
+              onClick: () =>
+                reorder.mutate(
+                  { dayId: day.id, stopIds: previousStopIds, expectedVersion: day.version },
+                  { onSuccess: () => compute.mutate(day.id) },
+                ),
+            }
+          : undefined,
+        duration: 8000,
+      })
+    },
+    onError: (err) => reportError(err, "Erro ao otimizar o dia."),
+    onSettled: () => cache.invalidate(),
+  })
+}

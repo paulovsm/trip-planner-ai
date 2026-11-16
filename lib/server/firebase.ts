@@ -1,6 +1,6 @@
 import "server-only"
 import { cert, getApp, getApps, initializeApp } from "firebase-admin/app"
-import { getFirestore } from "firebase-admin/firestore"
+import { getFirestore, type Firestore } from "firebase-admin/firestore"
 
 // Admin SDK only (bypasses Security Rules; firestore.rules denies all client access).
 // When FIRESTORE_EMULATOR_HOST is set the SDK talks to the emulator automatically.
@@ -18,5 +18,16 @@ const app = getApps().length
           },
     )
 
-const databaseId = process.env.FIRESTORE_DATABASE_ID
-export const firestore = databaseId ? getFirestore(app, databaseId) : getFirestore(app)
+// Optional fields travel as `undefined` in domain objects; drop them instead of
+// failing writes. Cached on globalThis because settings can only be applied once
+// (module re-evaluation in dev would otherwise throw).
+const globalForFirestore = globalThis as unknown as { __tripplannerFirestore?: Firestore }
+
+function create(): Firestore {
+  const databaseId = process.env.FIRESTORE_DATABASE_ID
+  const db = databaseId ? getFirestore(app, databaseId) : getFirestore(app)
+  db.settings({ ignoreUndefinedProperties: true })
+  return db
+}
+
+export const firestore = (globalForFirestore.__tripplannerFirestore ??= create())
