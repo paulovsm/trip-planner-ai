@@ -2,7 +2,8 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { useJsApiLoader } from "@react-google-maps/api"
+import { useMapsLibrary } from "@vis.gl/react-google-maps"
+import { MapsProvider } from "@/components/map/maps-provider"
 import { format } from "date-fns"
 import { ptBR } from "date-fns/locale"
 import { Calendar as CalendarIcon, Loader2, MapPin, Save, Trash2 } from "lucide-react"
@@ -21,8 +22,6 @@ import { buildImportCommit, type DraftPlace } from "@/lib/client/import-plan"
 import { CATEGORY_LABELS, PLACE_CATEGORIES, type PlaceCategory } from "@/lib/domain/categories"
 import type { ImportedDay, ImportResult } from "@/lib/domain/import"
 import { cn } from "@/lib/utils"
-
-const libraries: "places"[] = ["places"]
 
 type Draft = DraftPlace & { key: string }
 
@@ -66,6 +65,14 @@ function DateField({ label, value, onChange }: { label: string; value?: Date; on
 }
 
 export default function NewTripPage() {
+  return (
+    <MapsProvider>
+      <NewTripForm />
+    </MapsProvider>
+  )
+}
+
+function NewTripForm() {
   const router = useRouter()
   const [places, setPlaces] = useState<Draft[]>([])
   const [importedDays, setImportedDays] = useState<ImportedDay[]>([])
@@ -75,23 +82,19 @@ export default function NewTripPage() {
   const [isGeocoding, setIsGeocoding] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
 
-  const { isLoaded } = useJsApiLoader({
-    id: "google-map-script",
-    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "",
-    libraries,
-  })
+  const geocoding = useMapsLibrary("geocoding")
 
   const handleImport = async (data: ImportResult) => {
     const drafts: Draft[] = data.places.map((p) => ({ ...p, key: crypto.randomUUID() }))
     setImportedDays((prev) => [...prev, ...data.days])
-    if (!isLoaded) {
+    if (!geocoding) {
       toast.warning("O mapa ainda não carregou; os lugares ficarão sem localização.")
       setPlaces((prev) => [...prev, ...drafts])
       return
     }
     setIsGeocoding(true)
     try {
-      const geocoder = new google.maps.Geocoder()
+      const geocoder = new geocoding.Geocoder()
       const located = await Promise.all(drafts.map(async (p) => ({ ...p, location: await locate(geocoder, p) })))
       setPlaces((prev) => [...prev, ...located])
       const missing = located.filter((p) => !p.location).length

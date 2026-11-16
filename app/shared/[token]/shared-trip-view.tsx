@@ -1,11 +1,11 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import { useJsApiLoader } from "@react-google-maps/api"
 import { format, parseISO } from "date-fns"
 import { ptBR } from "date-fns/locale"
 import { Calendar as CalendarIcon, Layout, List as ListIcon, Map as MapIcon, MapPin } from "lucide-react"
-import { Map } from "@/components/features/map/map"
+import { MapsProvider } from "@/components/map/maps-provider"
+import { TripMap, type MapPlace } from "@/components/map/trip-map"
 import { Navbar } from "@/components/navbar"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -14,7 +14,6 @@ import { CATEGORY_LABELS } from "@/lib/domain/categories"
 import type { PublicTripDto } from "@/lib/domain/dto"
 import { cn } from "@/lib/utils"
 
-const libraries: "places"[] = ["places"]
 type ViewMode = "split" | "map" | "list"
 
 const VIEW_BUTTONS: { mode: ViewMode; label: string; Icon: typeof ListIcon }[] = [
@@ -25,21 +24,16 @@ const VIEW_BUTTONS: { mode: ViewMode; label: string; Icon: typeof ListIcon }[] =
 
 export function SharedTripView({ trip }: { trip: PublicTripDto }) {
   const [viewMode, setViewMode] = useState<ViewMode>("split")
-  const { isLoaded, loadError } = useJsApiLoader({
-    id: "google-map-script",
-    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "",
-    libraries,
-  })
 
   // The public DTO has no ids; the map only needs stable keys.
-  const points = useMemo(
+  const pins = useMemo<MapPlace[]>(
     () =>
       trip.places.map((p, i) => ({
-        id: `p${i}`,
+        key: `p${i}`,
         name: p.name,
         category: p.category,
-        latitude: p.location.lat,
-        longitude: p.location.lng,
+        lat: p.location.lat,
+        lng: p.location.lng,
         visited: p.visited,
       })),
     [trip.places],
@@ -145,7 +139,9 @@ export function SharedTripView({ trip }: { trip: PublicTripDto }) {
             viewMode === "list" ? "hidden" : viewMode === "map" ? "w-full h-full order-1" : "w-full md:w-2/3 h-1/2 md:h-full order-1 md:order-2",
           )}
         >
-          <Map points={points} isLoaded={isLoaded} loadError={loadError} />
+          <MapsProvider>
+            <TripMap places={pins} />
+          </MapsProvider>
         </div>
       </div>
     </div>
