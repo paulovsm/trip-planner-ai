@@ -1,6 +1,6 @@
 import type { ChatMessageView, CreatedShareLink, MemberView, ShareLinkView, TripDetail, TripSummary } from "@/lib/domain/dto"
 export type { ChatMessageView }
-import type { ImportResult } from "@/lib/domain/import"
+import type { ImportPreview } from "@/lib/domain/import"
 import type {
   AddStopInput,
   CreateDayInput,
@@ -104,7 +104,7 @@ export const api = {
     extract: (file: File) => {
       const form = new FormData()
       form.append("file", file)
-      return request<ImportResult>("POST", "/api/import", form)
+      return request<ImportPreview>("POST", "/api/import", form)
     },
     commit: (tripId: string, input: CommitImportInput) =>
       request<{ placeIds: string[]; dayIds: string[] }>("POST", `${t(tripId)}/import/commit`, input),

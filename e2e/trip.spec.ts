@@ -133,3 +133,37 @@ test.describe("routes and GPX", () => {
     await page.screenshot({ path: `test-results/screens/${info.project.name}-gpx.png` })
   })
 })
+
+test.describe("import", () => {
+  test("imports a document into an existing trip after review", async ({ page }) => {
+    const { tripId } = await seedTrip(page.request, "Importação E2E")
+    await page.goto(`/trips/${tripId}?tab=mais`)
+    await page.getByRole("button", { name: "Importar documento ou foto" }).click()
+    await page.getByLabel("Escolher arquivo para importar").setInputFiles({
+      name: "roteiro.pdf",
+      mimeType: "application/pdf",
+      buffer: Buffer.from("%PDF-1.4\n1 0 obj << >> endobj\ntrailer << >>\n%%EOF\n"),
+    })
+    // Fake AI extracts "Torre de Belém"; fake Places resolves its location.
+    await expect(page.getByRole("heading", { name: "Revisar importação" })).toBeVisible()
+    await expect(page.getByLabel("Incluir Torre de Belém")).toBeChecked()
+    await page.getByRole("button", { name: /Salvar na viagem \(1\)/ }).click()
+    await expect(page.getByText("1 lugar importado.")).toBeVisible()
+
+    const detail = await (await page.request.get(`/api/trips/${tripId}`)).json()
+    expect(detail.places).toHaveLength(4)
+    expect(detail.places.at(-1)).toMatchObject({ name: "Torre de Belém", source: "import" })
+  })
+
+  test("rejects files that are not documents or images", async ({ page }) => {
+    const { tripId } = await seedTrip(page.request)
+    await page.goto(`/trips/${tripId}?tab=mais`)
+    await page.getByRole("button", { name: "Importar documento ou foto" }).click()
+    await page.getByLabel("Escolher arquivo para importar").setInputFiles({
+      name: "virus.pdf",
+      mimeType: "application/pdf",
+      buffer: Buffer.from([0x4d, 0x5a, 0x90, 0x00]),
+    })
+    await expect(page.getByText(/Formato não suportado/)).toBeVisible()
+  })
+})

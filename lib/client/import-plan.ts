@@ -1,39 +1,35 @@
-import { addDays, format, parseISO } from "date-fns"
-import type { ImportedDay } from "@/lib/domain/import"
-import type { CreatePlaceInput } from "@/lib/domain/schemas"
+import type { PreviewPlace } from "@/lib/domain/import"
 import type { CommitImportInput } from "./api"
 
-export type DraftPlace = Omit<CreatePlaceInput, "location"> & { location?: { lat: number; lng: number } }
+export type ReviewRow = PreviewPlace & { key: string; include: boolean }
+export type ReviewDay = { key: string; dayNumber: number; date: string; places: string[] }
 
 /**
- * Turns reviewed import data into a commit payload: only located places are saved;
- * days get a date from the document or from the trip start date + (dayNumber - 1).
+ * Commit payload from the reviewed import: only included places with a location;
+ * days without a date (or without any kept place) are dropped; names match
+ * case-insensitively and duplicates are removed.
  */
-export function buildImportCommit(
-  places: DraftPlace[],
-  days: ImportedDay[],
-  startDate?: string,
-): { commit: CommitImportInput; skippedPlaces: number; skippedDays: number } {
-  const located = places.filter((p): p is CreatePlaceInput => !!p.location)
-  const indexByName = new Map(located.map((p, i) => [p.name.trim().toLowerCase(), i]))
-
-  let skippedDays = 0
-  const commitDays: CommitImportInput["days"] = []
-  for (const day of days) {
-    const date = day.date ?? (startDate ? format(addDays(parseISO(startDate), day.dayNumber - 1), "yyyy-MM-dd") : null)
-    if (!date) {
-      skippedDays++
-      continue
-    }
-    const placeIndexes = day.places
-      .map((name) => indexByName.get(name.trim().toLowerCase()))
-      .filter((i): i is number => i !== undefined)
-    commitDays.push({ date, placeIndexes: [...new Set(placeIndexes)] })
-  }
-
+export function toCommit(rows: ReviewRow[], days: ReviewDay[]): CommitImportInput {
+  const kept = rows.filter((r) => r.include && r.location)
+  const index = new Map(kept.map((r, i) => [r.name.trim().toLowerCase(), i]))
   return {
-    commit: { places: located, days: commitDays },
-    skippedPlaces: places.length - located.length,
-    skippedDays,
+    places: kept.map((r) => ({
+      name: r.name.trim(),
+      category: r.category,
+      description: r.description || undefined,
+      address: r.address || undefined,
+      city: r.city || undefined,
+      location: r.location!,
+      googlePlaceId: r.googlePlaceId,
+    })),
+    days: days
+      .filter((d) => d.date)
+      .map((d) => ({
+        date: d.date,
+        placeIndexes: [
+          ...new Set(d.places.map((n) => index.get(n.trim().toLowerCase())).filter((i): i is number => i !== undefined)),
+        ],
+      }))
+      .filter((d) => d.placeIndexes.length > 0),
   }
 }

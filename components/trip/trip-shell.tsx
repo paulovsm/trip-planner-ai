@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { MapsProvider } from "@/components/map/maps-provider"
 import { TripMap } from "@/components/map/trip-map"
 import { ChatPanel } from "@/components/features/chat/chat-panel"
+import { ImportDrawer } from "@/components/import/import-drawer"
 import { errorMessage } from "@/lib/client/api"
 import { dayPath, defaultDay, mapPins } from "@/lib/client/trip-view"
 import { cn } from "@/lib/utils"
@@ -100,7 +101,7 @@ export function TripShell({ tripId }: { tripId: string }) {
         <ChatPanel tripId={tripId} />
       </div>
     ),
-    mais: <MorePanel />,
+    mais: <MorePanel extra={<ImportDrawer />} />,
   }[tab]
 
   const map = (

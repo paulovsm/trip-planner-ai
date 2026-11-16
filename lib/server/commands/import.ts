@@ -5,7 +5,8 @@ import { generate } from "@/lib/ai/client"
 import { IMPORT_SYSTEM_INSTRUCTION } from "@/lib/ai/prompts"
 import { toGeminiSchema } from "@/lib/ai/schema"
 import { DomainError, validation } from "@/lib/domain/errors"
-import { ImportResult, MAX_IMPORT_DAYS, MAX_IMPORT_PLACES, type ImportMimeType } from "@/lib/domain/import"
+import { ImportResult, MAX_IMPORT_DAYS, MAX_IMPORT_PLACES, type ImportMimeType, type ImportPreview } from "@/lib/domain/import"
+import { resolveMany } from "../maps/places-api"
 import { CreatePlaceInput, Day, IsoDate, MAX_STOPS_PER_DAY, Place } from "@/lib/domain/schemas"
 import { requireTripAccess, tripRef, type SessionUser } from "../authz"
 import { firestore } from "../firebase"
@@ -39,6 +40,28 @@ export async function extractItinerary(file: { mimeType: ImportMimeType; data: B
   const parsed = ImportResult.safeParse(json)
   if (!parsed.success) throw new DomainError("VALIDATION", "Não foi possível interpretar o documento.")
   return parsed.data
+}
+
+/** Extracts with Gemini, then resolves each place with Google Places (writes nothing). */
+export async function previewImport(file: { mimeType: ImportMimeType; data: Buffer }): Promise<ImportPreview> {
+  const extracted = await extractItinerary(file)
+  try {
+    const found = await resolveMany(extracted.places, (p) => [p.name, p.address, p.city].filter(Boolean).join(", "))
+    return {
+      days: extracted.days,
+      resolution: "ok",
+      places: extracted.places.map((p, i) => {
+        const g = found[i]
+        if (!g) return p
+        return { ...p, city: p.city ?? g.city, address: p.address ?? g.address, location: g.location, googlePlaceId: g.googlePlaceId, matchedAddress: g.address }
+      }),
+    }
+  } catch (err) {
+    if (err instanceof DomainError && err.code === "UPSTREAM") {
+      return { places: extracted.places, days: extracted.days, resolution: "unavailable" }
+    }
+    throw err
+  }
 }
 
 /** Reviewed import, written in one batch: new Places plus Days (merged by date) with Stops. */

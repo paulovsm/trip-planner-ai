@@ -27,6 +27,21 @@ export const ImportResult = z.object({
 })
 
 export type ImportedPlace = z.infer<typeof ImportedPlace>
+
+/** An extracted place after server-side Places resolution (location may be missing). */
+export type PreviewPlace = ImportedPlace & {
+  location?: { lat: number; lng: number }
+  googlePlaceId?: string
+  /** Google's address for the match, shown in the review screen. */
+  matchedAddress?: string
+}
+
+export type ImportPreview = {
+  places: PreviewPlace[]
+  days: ImportedDay[]
+  /** "unavailable" when the server cannot resolve places (no key); the user picks them on the map. */
+  resolution: "ok" | "unavailable"
+}
 export type ImportedDay = z.infer<typeof ImportedDay>
 export type ImportResult = z.infer<typeof ImportResult>
 
