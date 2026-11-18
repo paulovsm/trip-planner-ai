@@ -9,7 +9,8 @@ import {
 } from "@google/genai"
 
 // Gemini access for every AI task (decision Q13): gemini-4-argon by default, with an
-// automatic fallback to gemini-4-hydrogen on errors/timeouts. Model, thinking level
+// automatic fallback to gemini-4-hydrogen on errors/timeouts (import is the exception:
+// Hydrogen first, see DEFAULTS). Model, thinking level
 // and timeout are configurable per task via env. temperature/topP/topK are
 // deprecated for these models and are never sent.
 
@@ -18,9 +19,13 @@ export type AiTask = "chat" | "import" | "agent"
 const PRIMARY_MODEL = "gemini-4-argon"
 const FALLBACK_MODEL = "gemini-4-hydrogen"
 
-const DEFAULTS: Record<AiTask, { thinkingLevel: ThinkingLevel; timeoutMs: number }> = {
+const DEFAULTS: Record<AiTask, { model?: string; thinkingLevel: ThinkingLevel; timeoutMs: number }> = {
   chat: { thinkingLevel: ThinkingLevel.LOW, timeoutMs: 45_000 },
-  import: { thinkingLevel: ThinkingLevel.HIGH, timeoutMs: 90_000 },
+  // Import is output-bound (~4-6k tokens of JSON for a 20-day, 150-place DOCX, after asking
+  // for compact JSON; ~10k before). Measured live (2026-11-18): Argon LOW took 40-59 s and once
+  // passed 120 s; Hydrogen LOW took 21-44 s with equivalent results. So import defaults to
+  // Hydrogen, with Argon as the fallback. The route allows 300 s: a timeout plus the fallback.
+  import: { model: FALLBACK_MODEL, thinkingLevel: ThinkingLevel.LOW, timeoutMs: 120_000 },
   // Measured live (2026-11-16): Argon agent turns took ~44-61 s at MEDIUM vs ~20-42 s at LOW;
   // gemini-4-hydrogen at LOW took 4-7 s with the same proposals. MINIMAL is rejected by Argon.
   agent: { thinkingLevel: ThinkingLevel.LOW, timeoutMs: 60_000 },
@@ -31,9 +36,11 @@ export type TaskConfig = { model: string; fallbackModel: string; thinkingLevel: 
 export function taskConfig(task: AiTask, env: Record<string, string | undefined> = process.env): TaskConfig {
   const key = task.toUpperCase()
   const level = env[`GEMINI_THINKING_${key}`]?.toUpperCase()
+  const model = env[`GEMINI_MODEL_${key}`] || DEFAULTS[task].model || PRIMARY_MODEL
   return {
-    model: env[`GEMINI_MODEL_${key}`] || PRIMARY_MODEL,
-    fallbackModel: env.GEMINI_MODEL_FALLBACK || FALLBACK_MODEL,
+    model,
+    // The other Gemini 4 model, unless overridden.
+    fallbackModel: env.GEMINI_MODEL_FALLBACK || (model === FALLBACK_MODEL ? PRIMARY_MODEL : FALLBACK_MODEL),
     thinkingLevel:
       level && level in ThinkingLevel ? ThinkingLevel[level as keyof typeof ThinkingLevel] : DEFAULTS[task].thinkingLevel,
     timeoutMs: Number(env[`GEMINI_TIMEOUT_${key}_MS`]) || DEFAULTS[task].timeoutMs,
@@ -147,6 +154,62 @@ function log(task: AiTask, model: string, started: number, fallback: boolean, re
     `[ai] task=${task} model=${model} ms=${Date.now() - started} fallback=${fallback} ` +
       `in=${u?.promptTokenCount ?? "?"} out=${u?.candidatesTokenCount ?? "?"} thoughts=${u?.thoughtsTokenCount ?? "?"}`,
   )
+}
+
+/**
+ * Streams a single-shot answer (e.g. structured JSON) and returns the full text, calling
+ * `onText` with the accumulated text as it arrives. Unlike generateStream, a retriable
+ * failure mid-stream (timeout, 5xx) restarts the answer on the fallback model;
+ * `onText` then starts again from an empty string.
+ */
+export async function generateCollect(
+  task: AiTask,
+  contents: Content[],
+  config: Omit<GenerateContentConfig, "abortSignal" | "thinkingConfig" | "temperature" | "topP" | "topK"> = {},
+  onText: (text: string) => void = () => {},
+  signal?: AbortSignal,
+): Promise<{ text: string; model: string; usedFallback: boolean }> {
+  if (process.env.AI_FAKE === "1") {
+    const { text } = await fakeGenerate(task, contents)
+    onText(text)
+    return { text, model: "fake", usedFallback: false }
+  }
+
+  const cfg = taskConfig(task)
+  const models = cfg.model === cfg.fallbackModel ? [cfg.model] : [cfg.model, cfg.fallbackModel]
+  const started = Date.now()
+  for (const [i, model] of models.entries()) {
+    const timeout = AbortSignal.timeout(cfg.timeoutMs)
+    try {
+      const stream = await getClient().models.generateContentStream({
+        model,
+        contents,
+        config: {
+          ...config,
+          thinkingConfig: { thinkingLevel: cfg.thinkingLevel },
+          abortSignal: signal ? AbortSignal.any([signal, timeout]) : timeout,
+        },
+      })
+      let text = ""
+      let last: GenerateContentResponse | undefined
+      onText(text)
+      for await (const chunk of stream) {
+        last = chunk
+        const delta = chunk.text
+        if (delta) {
+          text += delta
+          onText(text)
+        }
+      }
+      if (last) log(task, model, started, i > 0, last)
+      return { text, model, usedFallback: i > 0 }
+    } catch (err) {
+      const retriable = isRetriable(err) || timeout.aborted
+      if (signal?.aborted || !retriable || i === models.length - 1) throw err
+      console.warn(`[ai] ${task}: ${model} failed (${describe(err)}); falling back to ${models[i + 1]}`)
+    }
+  }
+  throw new Error("unreachable")
 }
 
 // ---------- Streaming (agentic chat) ----------

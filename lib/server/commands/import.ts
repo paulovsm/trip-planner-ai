@@ -1,11 +1,19 @@
 import "server-only"
 import { nanoid } from "nanoid"
 import { z } from "zod"
-import { generate } from "@/lib/ai/client"
+import { generateCollect } from "@/lib/ai/client"
 import { IMPORT_SYSTEM_INSTRUCTION } from "@/lib/ai/prompts"
 import { toGeminiSchema } from "@/lib/ai/schema"
 import { DomainError, validation } from "@/lib/domain/errors"
-import { ImportResult, MAX_IMPORT_DAYS, MAX_IMPORT_PLACES, type ImportMimeType, type ImportPreview } from "@/lib/domain/import"
+import {
+  countPlacesInPartialJson,
+  ImportResult,
+  MAX_IMPORT_DAYS,
+  MAX_IMPORT_PLACES,
+  type ImportMimeType,
+  type ImportPreview,
+  type ImportProgress,
+} from "@/lib/domain/import"
 import { resolveMany } from "../maps/places-api"
 import { CreatePlaceInput, Day, IsoDate, MAX_STOPS_PER_DAY, Place } from "@/lib/domain/schemas"
 import { requireTripAccess, tripRef, type SessionUser } from "../authz"
@@ -13,8 +21,13 @@ import { firestore } from "../firebase"
 import { nowIso, readDoc, toFirestore } from "../firestore-io"
 
 /** Sends the file to Gemini (native PDF/DOCX/image input) and returns validated data. Writes nothing. */
-export async function extractItinerary(file: { mimeType: ImportMimeType; data: Buffer }): Promise<ImportResult> {
-  const result = await generate(
+export async function extractItinerary(
+  file: { mimeType: ImportMimeType; data: Buffer },
+  onProgress: (p: ImportProgress) => void = () => {},
+  signal?: AbortSignal,
+): Promise<ImportResult> {
+  let found = -1
+  const result = await generateCollect(
     "import",
     [
       {
@@ -30,6 +43,11 @@ export async function extractItinerary(file: { mimeType: ImportMimeType; data: B
       responseMimeType: "application/json",
       responseJsonSchema: toGeminiSchema(ImportResult),
     },
+    (text) => {
+      const n = countPlacesInPartialJson(text)
+      if (n !== found) onProgress({ type: "progress", stage: "reading", found: (found = n) })
+    },
+    signal,
   )
   let json: unknown
   try {
@@ -43,10 +61,16 @@ export async function extractItinerary(file: { mimeType: ImportMimeType; data: B
 }
 
 /** Extracts with Gemini, then resolves each place with Google Places (writes nothing). */
-export async function previewImport(file: { mimeType: ImportMimeType; data: Buffer }): Promise<ImportPreview> {
-  const extracted = await extractItinerary(file)
+export async function previewImport(
+  file: { mimeType: ImportMimeType; data: Buffer },
+  onProgress: (p: ImportProgress) => void = () => {},
+  signal?: AbortSignal,
+): Promise<ImportPreview> {
+  const extracted = await extractItinerary(file, onProgress, signal)
   try {
-    const found = await resolveMany(extracted.places, (p) => [p.name, p.address, p.city].filter(Boolean).join(", "))
+    const found = await resolveMany(extracted.places, (p) => [p.name, p.address, p.city].filter(Boolean).join(", "), {
+      onProgress: (done, total) => onProgress({ type: "progress", stage: "locating", done, total }),
+    })
     return {
       days: extracted.days,
       resolution: "ok",

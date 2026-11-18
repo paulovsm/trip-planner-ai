@@ -10,7 +10,13 @@ describe("taskConfig", () => {
       thinkingLevel: ThinkingLevel.LOW,
       timeoutMs: 45_000,
     })
-    expect(taskConfig("import", {}).thinkingLevel).toBe(ThinkingLevel.HIGH)
+    expect(taskConfig("import", {})).toEqual({
+      model: "gemini-4-hydrogen",
+      fallbackModel: "gemini-4-argon",
+      thinkingLevel: ThinkingLevel.LOW,
+      timeoutMs: 120_000,
+    })
+    expect(taskConfig("import", { GEMINI_MODEL_IMPORT: "gemini-4-argon" }).fallbackModel).toBe("gemini-4-hydrogen")
   })
 
   it("is overridable per task via env", () => {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { detectImportType, ImportResult } from "./import"
+import { countPlacesInPartialJson, detectImportType, ImportResult } from "./import"
 
 const bytes = (...parts: (number[] | string)[]) =>
   new Uint8Array(parts.flatMap((p) => (typeof p === "string" ? [...p].map((c) => c.charCodeAt(0)) : p)))
@@ -41,5 +41,13 @@ describe("ImportResult", () => {
     )
     const many = Array.from({ length: 201 }, (_, i) => ({ name: `P${i}`, category: "outros" }))
     expect(ImportResult.safeParse({ places: many, days: [] }).success).toBe(false)
+  })
+})
+
+describe("countPlacesInPartialJson", () => {
+  it("counts places in a JSON answer that is still streaming", () => {
+    expect(countPlacesInPartialJson("")).toBe(0)
+    expect(countPlacesInPartialJson('{"places":[{"name":"Prado","category":"cultura"},{"name" : "Ret')).toBe(2)
+    expect(countPlacesInPartialJson('{"places":[{"name":"A"}],"days":[{"dayNumber":1,"places":["A"]}]}')).toBe(1)
   })
 })

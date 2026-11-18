@@ -7,7 +7,7 @@ export type ChatEvent =
   | { type: "proposal"; proposal: ProposalView }
   | { type: "done"; message: ChatMessageView }
   | { type: "error"; message: string }
-import type { ImportPreview } from "@/lib/domain/import"
+import type { ImportEvent, ImportPreview, ImportProgress } from "@/lib/domain/import"
 import type { ProposalView } from "@/lib/domain/proposals"
 import type {
   AddStopInput,
@@ -35,6 +35,25 @@ export class ApiError extends Error {
     super(message)
     this.name = "ApiError"
   }
+}
+
+/** Reads an NDJSON response line by line; non-2xx responses become ApiErrors. */
+async function readNdjson<E>(res: Response, onEvent: (e: E) => void, fallbackMessage: string) {
+  if (!res.ok || !res.body) {
+    const data = await res.json().catch(() => null)
+    throw new ApiError(res.status, data?.error?.code ?? "UNKNOWN", data?.error?.message ?? fallbackMessage)
+  }
+  const reader = res.body.pipeThrough(new TextDecoderStream()).getReader()
+  let buffer = ""
+  for (;;) {
+    const { value, done } = await reader.read()
+    if (done) break
+    buffer += value
+    const lines = buffer.split("\n")
+    buffer = lines.pop() ?? ""
+    for (const line of lines) if (line.trim()) onEvent(JSON.parse(line) as E)
+  }
+  if (buffer.trim()) onEvent(JSON.parse(buffer) as E)
 }
 
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
@@ -113,31 +132,42 @@ export const api = {
         body: JSON.stringify({ message }),
         signal,
       })
-      if (!res.ok || !res.body) {
-        const data = await res.json().catch(() => null)
-        throw new ApiError(res.status, data?.error?.code ?? "UNKNOWN", data?.error?.message ?? "O assistente não respondeu.")
-      }
-      const reader = res.body.pipeThrough(new TextDecoderStream()).getReader()
-      let buffer = ""
-      for (;;) {
-        const { value, done } = await reader.read()
-        if (done) break
-        buffer += value
-        const lines = buffer.split("\n")
-        buffer = lines.pop() ?? ""
-        for (const line of lines) if (line.trim()) onEvent(JSON.parse(line) as ChatEvent)
-      }
-      if (buffer.trim()) onEvent(JSON.parse(buffer) as ChatEvent)
+      await readNdjson<ChatEvent>(res, onEvent, "O assistente não respondeu.")
     },
     clear: (tripId: string) => request<void>("DELETE", `${t(tripId)}/chat`),
     decide: (tripId: string, proposalId: string, decision: "apply" | "discard") =>
       request<ProposalView>("POST", `${t(tripId)}/chat/proposals/${encodeURIComponent(proposalId)}`, { decision }),
   },
   import: {
-    extract: (file: File) => {
+    /** Uploads the file and follows the streamed progress until the preview arrives. */
+    extract: async (file: File, onProgress: (p: ImportProgress) => void = () => {}, signal?: AbortSignal) => {
       const form = new FormData()
       form.append("file", file)
-      return request<ImportPreview>("POST", "/api/import", form)
+      const res = await fetch("/api/import", { method: "POST", body: form, signal }).catch((err) => {
+        if (signal?.aborted) throw err
+        throw new ApiError(0, "OFFLINE", "Sem conexão. Verifique a internet e tente de novo.")
+      })
+      let preview: ImportPreview | undefined
+      let failure: string | undefined
+      const interrupted = () =>
+        new ApiError(0, "INTERRUPTED", "A conexão caiu antes do fim. Mantenha esta tela aberta e tente de novo.")
+      try {
+        await readNdjson<ImportEvent>(
+          res,
+          (e) => {
+            if (e.type === "progress") onProgress(e)
+            else if (e.type === "result") preview = e.preview
+            else failure = e.message
+          },
+          "Não foi possível processar o documento.",
+        )
+      } catch (err) {
+        if (err instanceof ApiError || signal?.aborted) throw err
+        throw interrupted()
+      }
+      if (failure) throw new ApiError(422, "IMPORT_FAILED", failure)
+      if (!preview) throw interrupted()
+      return preview
     },
     commit: (tripId: string, input: CommitImportInput) =>
       request<{ placeIds: string[]; dayIds: string[] }>("POST", `${t(tripId)}/import/commit`, input),

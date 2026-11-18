@@ -51,8 +51,10 @@ describe("places-api", () => {
 
   it("resolves many with failures as null, but surfaces configuration errors", async () => {
     vi.stubEnv("MAPS_FAKE", "1")
-    const out = await resolveMany(["A, X", "B, Y"], (s) => s)
+    const progress: string[] = []
+    const out = await resolveMany(["A, X", "B, Y"], (s) => s, { onProgress: (done, total) => progress.push(`${done}/${total}`) })
     expect(out.map((p) => p?.name)).toEqual(["A", "B"])
+    expect(progress).toEqual(["1/2", "2/2"])
 
     vi.stubEnv("MAPS_FAKE", "")
     vi.stubEnv("GOOGLE_MAPS_SERVER_KEY", "")

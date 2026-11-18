@@ -74,4 +74,5 @@ Regras:
 - Use o nome oficial do lugar e a cidade; inclua endereço quando o documento trouxer.
 - Escolha a categoria mais adequada entre as permitidas.
 - Se o documento organizar por dias, preencha "days" com dayNumber (1 = primeiro dia), a data (AAAA-MM-DD) se estiver explícita, e os nomes dos lugares exatamente como em "places".
-- Responda somente com o JSON no esquema pedido.`
+- "description" só quando o documento trouxer algo útil sobre o lugar, em no máximo uma frase.
+- Responda somente com o JSON no esquema pedido, compacto, numa única linha, sem indentação nem quebras de linha. Omita campos vazios.`

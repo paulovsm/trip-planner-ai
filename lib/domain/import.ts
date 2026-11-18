@@ -43,6 +43,17 @@ export type ImportPreview = {
   resolution: "ok" | "unavailable"
 }
 export type ImportedDay = z.infer<typeof ImportedDay>
+
+/** NDJSON events streamed by POST /api/import while a document is processed. */
+export type ImportEvent =
+  | { type: "progress"; stage: "reading"; found: number }
+  | { type: "progress"; stage: "locating"; done: number; total: number }
+  | { type: "result"; preview: ImportPreview }
+  | { type: "error"; message: string }
+export type ImportProgress = Extract<ImportEvent, { type: "progress" }>
+
+/** Places seen so far in a partial (streamed) extraction: each has a "name" key. */
+export const countPlacesInPartialJson = (text: string) => text.match(/"name"\s*:/g)?.length ?? 0
 export type ImportResult = z.infer<typeof ImportResult>
 
 export const SUPPORTED_IMPORT_TYPES = {
